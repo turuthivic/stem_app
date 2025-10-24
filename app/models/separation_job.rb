@@ -12,10 +12,10 @@ class SeparationJob < ApplicationRecord
   }
 
   enum :separation_type, {
-    vocals_accompaniment: 0,
-    drums_other: 1,
-    bass_other: 2,
-    piano_other: 3
+    vocals_accompaniment: "vocals_accompaniment",
+    drums_other: "drums_other",
+    bass_other: "bass_other",
+    piano_other: "piano_other"
   }
 
   # Validations
