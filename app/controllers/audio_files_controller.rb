@@ -70,6 +70,8 @@ class AudioFilesController < ApplicationController
       send_stem(@audio_file.vocals_stem)
     when 'accompaniment'
       send_stem(@audio_file.accompaniment_stem)
+    when 'original'
+      send_stem(@audio_file.original_file)
     else
       head :not_found
     end

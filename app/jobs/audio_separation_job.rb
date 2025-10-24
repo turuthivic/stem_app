@@ -19,19 +19,17 @@ class AudioSeparationJob < ApplicationJob
       separation_job.mark_as_started!
 
       # Perform the actual audio separation
-      result = separate_audio_file(audio_file, separation_job)
+      # Note: This method now handles stem attachment internally before cleanup
+      success = separate_audio_file(audio_file, separation_job)
 
-      if result[:success]
-        # Attach the separated stems to the audio file
-        attach_stems(audio_file, result[:output_paths])
-
+      if success
         # Mark audio file as completed
         audio_file.update!(status: :completed)
         separation_job.mark_as_completed!
 
         Rails.logger.info "Audio separation completed for AudioFile #{audio_file.id}"
       else
-        raise StandardError, result[:error]
+        raise StandardError, "Audio separation failed"
       end
 
     rescue => e
@@ -135,12 +133,21 @@ class AudioSeparationJob < ApplicationJob
           error: "No valid result received from separation script"
         }
 
-        result
+        # Attach stems BEFORE the ensure block cleans up temp directory
+        if result[:success] && result[:output_paths]
+          Rails.logger.info "Attaching stems from output paths before cleanup"
+          attach_stems(audio_file, result[:output_paths])
+          Rails.logger.info "Stems attached successfully"
+        end
+
+        # Return success status
+        result[:success]
       end
 
     ensure
       # Clean up temporary directory
       FileUtils.rm_rf(temp_dir) if Dir.exist?(temp_dir)
+      Rails.logger.info "Cleaned up temporary directory: #{temp_dir}"
     end
   end
 

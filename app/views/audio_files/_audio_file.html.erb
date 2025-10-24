@@ -82,25 +82,36 @@
         <% if audio_file.completed? %>
           <!-- Play/Download buttons for completed files -->
           <div class="flex items-center space-x-2">
+            <!-- Original audio play button -->
+            <%= link_to stems_audio_file_path(audio_file, stem_type: "original"),
+                       class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors",
+                       data: { controller: "audio-player", action: "click->audio-player#play", audio_player_type_value: "original" },
+                       title: "Play original audio" do %>
+              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+              </svg>
+              <span>Original</span>
+            <% end %>
+
             <% if audio_file.vocals_stem.attached? %>
               <%= link_to stems_audio_file_path(audio_file, stem_type: "vocals"),
-                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-                         data: { controller: "audio-player", audio_player_type_value: "vocals" } do %>
+                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors",
+                         data: { controller: "audio-player", action: "click->audio-player#play", audio_player_type_value: "vocals" } do %>
                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
                 </svg>
-                Vocals
+                <span>Vocals</span>
               <% end %>
             <% end %>
 
             <% if audio_file.accompaniment_stem.attached? %>
               <%= link_to stems_audio_file_path(audio_file, stem_type: "accompaniment"),
-                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-                         data: { controller: "audio-player", audio_player_type_value: "accompaniment" } do %>
+                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors",
+                         data: { controller: "audio-player", action: "click->audio-player#play", audio_player_type_value: "accompaniment" } do %>
                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
                 </svg>
-                Music
+                <span>Music</span>
               <% end %>
             <% end %>
 
