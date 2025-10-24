@@ -2,11 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 import Plyr from "plyr"
 
 export default class extends Controller {
-  static values = { url: String, type: String }
-  static targets = ["player"]
+  static targets = ["player", "playerContainer", "trackName"]
 
   connect() {
-    this.initializePlayer()
+    this.player = null
   }
 
   disconnect() {
@@ -16,9 +15,38 @@ export default class extends Controller {
     }
   }
 
-  initializePlayer() {
-    if (!this.hasPlayerTarget) return
+  loadTrack(event) {
+    const url = event.params.url
+    const name = event.params.name
 
+    // Stop other players
+    this.stopOtherPlayers()
+
+    // Show the player container
+    this.playerContainerTarget.classList.remove('hidden')
+
+    // Update track name
+    this.trackNameTarget.textContent = name
+
+    // If player doesn't exist, initialize it
+    if (!this.player) {
+      this.initializePlayer()
+    }
+
+    // Load the new track
+    this.player.source = {
+      type: 'audio',
+      sources: [{
+        src: url,
+        type: url.endsWith('.mp3') ? 'audio/mp3' : 'audio/wav'
+      }]
+    }
+
+    // Auto-play the new track
+    this.player.play()
+  }
+
+  initializePlayer() {
     this.player = new Plyr(this.playerTarget, {
       controls: [
         'play',

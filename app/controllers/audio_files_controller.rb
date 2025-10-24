@@ -3,7 +3,6 @@ class AudioFilesController < ApplicationController
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
-    @audio_file = AudioFile.new # For the upload form
   end
 
   def show
@@ -19,14 +18,8 @@ class AudioFilesController < ApplicationController
 
     respond_to do |format|
       if @audio_file.save
-        format.html { redirect_to @audio_file, notice: 'Audio file was successfully uploaded.' }
-        format.turbo_stream do
-          render turbo_stream: [
-            turbo_stream.prepend("audio_files", partial: "audio_files/audio_file", locals: { audio_file: @audio_file }),
-            turbo_stream.replace("upload_form", partial: "audio_files/upload_form", locals: { audio_file: AudioFile.new }),
-            turbo_stream.prepend("flash_messages", partial: "shared/flash", locals: { message: "Audio file uploaded successfully!", type: "notice" })
-          ]
-        end
+        format.html { redirect_to @audio_file, notice: 'Audio file uploaded successfully! Processing will begin shortly.' }
+        format.turbo_stream { redirect_to @audio_file }
       else
         format.html { render :new, status: :unprocessable_entity }
         format.turbo_stream do

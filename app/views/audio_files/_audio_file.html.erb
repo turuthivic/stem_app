@@ -80,35 +80,55 @@
       <!-- Actions -->
       <div class="flex items-center space-x-2 ml-4">
         <% if audio_file.completed? %>
-          <!-- Audio Players for completed files -->
-          <div class="flex-1 space-y-3">
-            <!-- Original Audio Player -->
-            <div data-controller="audio-player">
-              <div class="text-xs font-medium text-gray-700 mb-1">Original</div>
-              <audio data-audio-player-target="player" controls>
-                <source src="<%= stems_audio_file_path(audio_file, stem_type: "original") %>" type="<%= audio_file.original_file.content_type %>">
-              </audio>
+          <!-- Preview buttons and single player -->
+          <div class="flex-1" data-controller="audio-player">
+            <!-- Preview Buttons -->
+            <div class="flex items-center space-x-2 mb-3">
+              <button type="button"
+                      data-action="click->audio-player#loadTrack"
+                      data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'original') %>"
+                      data-audio-player-name-param="Original"
+                      class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                </svg>
+                Original
+              </button>
+
+              <% if audio_file.vocals_stem.attached? %>
+                <button type="button"
+                        data-action="click->audio-player#loadTrack"
+                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'vocals') %>"
+                        data-audio-player-name-param="Vocals"
+                        class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                  <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                  </svg>
+                  Vocals
+                </button>
+              <% end %>
+
+              <% if audio_file.accompaniment_stem.attached? %>
+                <button type="button"
+                        data-action="click->audio-player#loadTrack"
+                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'accompaniment') %>"
+                        data-audio-player-name-param="Music"
+                        class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                  <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                  </svg>
+                  Music
+                </button>
+              <% end %>
             </div>
 
-            <% if audio_file.vocals_stem.attached? %>
-              <!-- Vocals Player -->
-              <div data-controller="audio-player">
-                <div class="text-xs font-medium text-gray-700 mb-1">Vocals</div>
-                <audio data-audio-player-target="player" controls>
-                  <source src="<%= stems_audio_file_path(audio_file, stem_type: "vocals") %>" type="audio/wav">
-                </audio>
+            <!-- Single Audio Player (hidden until track is loaded) -->
+            <div data-audio-player-target="playerContainer" class="hidden">
+              <div class="text-xs font-medium text-gray-700 mb-2">
+                Now Playing: <span data-audio-player-target="trackName" class="text-blue-600"></span>
               </div>
-            <% end %>
-
-            <% if audio_file.accompaniment_stem.attached? %>
-              <!-- Music/Accompaniment Player -->
-              <div data-controller="audio-player">
-                <div class="text-xs font-medium text-gray-700 mb-1">Music</div>
-                <audio data-audio-player-target="player" controls>
-                  <source src="<%= stems_audio_file_path(audio_file, stem_type: "accompaniment") %>" type="audio/wav">
-                </audio>
-              </div>
-            <% end %>
+              <audio data-audio-player-target="player" controls></audio>
+            </div>
           </div>
 
             <!-- Download dropdown -->

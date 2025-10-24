@@ -1,15 +1,15 @@
 <div class="max-w-6xl mx-auto">
-  <div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">Audio File Separator</h1>
-    <p class="text-gray-600">Upload audio files to separate vocals from accompaniment using AI</p>
-  </div>
-
-  <!-- Upload Form Section -->
-  <div class="bg-white rounded-lg shadow-sm border mb-8 p-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">Upload New Audio File</h2>
-    <div id="upload_form">
-      <%= render "upload_form", audio_file: @audio_file %>
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Audio File Separator</h1>
+      <p class="text-gray-600">Separate vocals from accompaniment using AI</p>
     </div>
+    <%= link_to new_audio_file_path, class: "inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" do %>
+      <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+      </svg>
+      Upload Audio File
+    <% end %>
   </div>
 
   <!-- Audio Files List -->
@@ -24,12 +24,13 @@
           <%= render "audio_file", audio_file: audio_file %>
         <% end %>
       <% else %>
-        <div class="p-6 text-center text-gray-500">
-          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="p-12 text-center text-gray-500">
+          <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.895 2-4 2s-4-.895-4-2 1.895-2 4-2 4 .895 4 2zm12-3c0 1.105-1.895 2-4 2s-4-.895-4-2 1.895-2 4-2 4 .895 4 2zM9 10l12-3" />
           </svg>
           <p class="text-lg font-medium text-gray-900 mb-2">No audio files yet</p>
-          <p class="text-gray-500">Upload your first audio file to get started with stem separation</p>
+          <p class="text-gray-500 mb-6">Upload your first audio file to get started with stem separation</p>
+          <%= link_to "Upload Audio File", new_audio_file_path, class: "inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700" %>
         </div>
       <% end %>
     </div>

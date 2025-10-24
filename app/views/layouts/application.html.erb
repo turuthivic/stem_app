@@ -23,6 +23,7 @@
 
     <%# Plyr CSS - local with CDN fallback %>
     <%= stylesheet_link_tag "plyr", "data-turbo-track": "reload", onerror: "this.onerror=null;this.href='https://cdn.plyr.io/3.7.8/plyr.css'" %>
+    <%= stylesheet_link_tag "plyr_custom", "data-turbo-track": "reload" %>
 
     <%= javascript_importmap_tags %>
   </head>
