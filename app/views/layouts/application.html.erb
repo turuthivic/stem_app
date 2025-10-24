@@ -20,6 +20,10 @@
     <%# Include Tailwind CSS %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+
+    <%# Plyr CSS - local with CDN fallback %>
+    <%= stylesheet_link_tag "plyr", "data-turbo-track": "reload", onerror: "this.onerror=null;this.href='https://cdn.plyr.io/3.7.8/plyr.css'" %>
+
     <%= javascript_importmap_tags %>
   </head>
 
