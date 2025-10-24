@@ -38,3 +38,4 @@
 
 # Ignore Redis dump files
 dump.rdb
+.claude/settings.local.json
