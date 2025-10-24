@@ -63,6 +63,13 @@ export default class extends Controller {
   updateSubmitButton() {
     const hasFile = this.fileInputTarget.files.length > 0
     this.submitButtonTarget.disabled = !hasFile
+
+    // Update tooltip based on state
+    if (hasFile) {
+      this.submitButtonTarget.title = "Click to upload and process your audio file"
+    } else {
+      this.submitButtonTarget.title = "Please select a file first"
+    }
   }
 
   // Handle form submission with progress

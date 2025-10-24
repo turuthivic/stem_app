@@ -51,7 +51,18 @@ class AudioSeparationJob < ApplicationJob
     begin
       # Download the original file to temp directory
       input_path = File.join(temp_dir, "input#{File.extname(audio_file.original_file.filename.to_s)}")
-      File.binwrite(input_path, audio_file.original_file.download)
+
+      # Write the file using File.open to ensure proper file handling
+      File.open(input_path, "wb") do |file|
+        file.write(audio_file.original_file.download)
+      end
+
+      # Verify file was written successfully
+      unless File.exist?(input_path) && File.size(input_path) > 0
+        raise StandardError, "Failed to write input file to #{input_path}"
+      end
+
+      Rails.logger.info "Input file written to #{input_path} (#{File.size(input_path)} bytes)"
 
       # Create output directory
       output_dir = File.join(temp_dir, "output")

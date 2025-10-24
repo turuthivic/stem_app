@@ -1,4 +1,4 @@
-<%= form_with model: audio_file, local: false, data: { controller: "upload", turbo_frame: "upload_form" },
+<%= form_with model: audio_file, local: false, data: { controller: "upload", turbo_frame: "upload_form", action: "submit->upload#submitForm" },
                class: "space-y-4", multipart: true do |form| %>
 
   <% if audio_file.errors.any? %>
@@ -44,6 +44,7 @@
         </button>
 
         <div data-upload-target="fileName" class="mt-4 text-sm text-gray-600 hidden"></div>
+        <p class="mt-2 text-xs text-gray-500">Supported formats: MP3, WAV, FLAC, M4A (max 100MB)</p>
       </div>
     </div>
 
@@ -60,6 +61,7 @@
       <%= form.submit "Upload & Process",
                      class: "w-full bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed",
                      data: { upload_target: "submitButton" },
+                     title: "Please select a file first",
                      disabled: true %>
     </div>
   </div>
