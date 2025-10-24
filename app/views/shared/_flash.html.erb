@@ -1,0 +1,15 @@
+<%
+  css_class = case type
+              when "notice"
+                "bg-green-50 border border-green-200 text-green-800"
+              when "alert"
+                "bg-red-50 border border-red-200 text-red-800"
+              else
+                "bg-blue-50 border border-blue-200 text-blue-800"
+              end
+%>
+
+<div class="<%= css_class %> px-4 py-3 rounded-lg mb-4 flex items-center justify-between" data-controller="flash" data-flash-auto-dismiss-value="5000">
+  <span><%= message %></span>
+  <button data-action="click->flash#dismiss" class="ml-4 text-current hover:opacity-70 font-bold text-lg">&times;</button>
+</div>

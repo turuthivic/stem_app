@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Stem App" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Include Tailwind CSS %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow-sm border-b">
+      <div class="container mx-auto px-6 py-4">
+        <h1 class="text-2xl font-bold text-gray-900">
+          <%= link_to "STEM Audio Separator", root_path, class: "hover:text-blue-600 transition-colors" %>
+        </h1>
+      </div>
+    </header>
+
+    <div id="flash_messages" class="container mx-auto px-6 py-4">
+      <% if notice %>
+        <%= render "shared/flash", message: notice, type: "notice" %>
+      <% end %>
+      <% if alert %>
+        <%= render "shared/flash", message: alert, type: "alert" %>
+      <% end %>
+    </div>
+
+    <main class="container mx-auto px-6 py-6">
+      <%= yield %>
+    </main>
+  </body>
+</html>
