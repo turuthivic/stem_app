@@ -38,7 +38,7 @@
           <!-- File Details -->
           <div class="flex-1 min-w-0">
             <h3 class="text-lg font-medium text-gray-900 truncate">
-              <%= link_to audio_file.title, audio_file, class: "hover:text-blue-600 transition-colors" %>
+              <%= link_to audio_file.title, audio_file, class: "hover:text-blue-600 transition-colors", data: { turbo_frame: "_top" } %>
             </h3>
             <div class="flex items-center space-x-4 text-sm text-gray-500 mt-1">
               <span class="flex items-center">
@@ -78,16 +78,18 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center space-x-2 ml-4">
+      <div class="flex items-start space-x-2 ml-4">
         <% if audio_file.completed? %>
-          <!-- Preview buttons and single player -->
-          <div class="flex-1" data-controller="audio-player">
-            <!-- Preview Buttons -->
-            <div class="flex items-center space-x-2 mb-3">
+          <div class="flex flex-col space-y-3">
+            <!-- Preview buttons and download button in same row -->
+            <div class="flex items-center space-x-2">
+              <!-- Preview buttons -->
               <button type="button"
+                      data-controller="audio-player"
                       data-action="click->audio-player#loadTrack"
                       data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'original') %>"
                       data-audio-player-name-param="Original"
+                      data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
@@ -97,9 +99,11 @@
 
               <% if audio_file.vocals_stem.attached? %>
                 <button type="button"
+                        data-controller="audio-player"
                         data-action="click->audio-player#loadTrack"
                         data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'vocals') %>"
                         data-audio-player-name-param="Vocals"
+                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
                         class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                   <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
@@ -110,9 +114,11 @@
 
               <% if audio_file.accompaniment_stem.attached? %>
                 <button type="button"
+                        data-controller="audio-player"
                         data-action="click->audio-player#loadTrack"
                         data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'accompaniment') %>"
                         data-audio-player-name-param="Music"
+                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
                         class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                   <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
@@ -120,67 +126,66 @@
                   Music
                 </button>
               <% end %>
+
+              <!-- Download dropdown -->
+              <div class="relative" data-controller="dropdown">
+                <button data-action="click->dropdown#toggle"
+                        class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                  </svg>
+                  Download
+                  <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+
+                <div data-dropdown-target="menu"
+                     class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div class="py-1">
+                    <%= link_to download_audio_file_path(audio_file, stem_type: "vocals"),
+                               class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
+                               data: { turbo: false } do %>
+                      <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+                        </svg>
+                        Download Vocals
+                      </div>
+                    <% end %>
+
+                    <%= link_to download_audio_file_path(audio_file, stem_type: "accompaniment"),
+                               class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
+                               data: { turbo: false } do %>
+                      <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+                        </svg>
+                        Download Music
+                      </div>
+                    <% end %>
+
+                    <%= link_to download_audio_file_path(audio_file, stem_type: "original"),
+                               class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
+                               data: { turbo: false } do %>
+                      <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                        Download Original
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Single Audio Player (hidden until track is loaded) -->
-            <div data-audio-player-target="playerContainer" class="hidden pb-16">
+            <div id="player_container_<%= audio_file.id %>" class="hidden">
               <div class="text-xs font-medium text-gray-700 mb-2">
-                Now Playing: <span data-audio-player-target="trackName" class="text-blue-600"></span>
+                Now Playing: <span id="track_name_<%= audio_file.id %>" class="text-blue-600"></span>
               </div>
-              <audio data-audio-player-target="player" controls></audio>
-            </div>
-          </div>
-
-            <!-- Download dropdown -->
-            <div class="relative" data-controller="dropdown">
-              <button data-action="click->dropdown#toggle"
-                      class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-                Download
-                <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-              </button>
-
-              <div data-dropdown-target="menu"
-                   class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                <div class="py-1">
-                  <%= link_to download_audio_file_path(audio_file, stem_type: "vocals"),
-                             class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
-                             data: { turbo: false } do %>
-                    <div class="flex items-center">
-                      <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
-                      </svg>
-                      Download Vocals
-                    </div>
-                  <% end %>
-
-                  <%= link_to download_audio_file_path(audio_file, stem_type: "accompaniment"),
-                             class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
-                             data: { turbo: false } do %>
-                    <div class="flex items-center">
-                      <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
-                      </svg>
-                      Download Music
-                    </div>
-                  <% end %>
-
-                  <%= link_to download_audio_file_path(audio_file, stem_type: "original"),
-                             class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
-                             data: { turbo: false } do %>
-                    <div class="flex items-center">
-                      <svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                      </svg>
-                      Download Original
-                    </div>
-                  <% end %>
-                </div>
-              </div>
+              <audio id="audio_player_<%= audio_file.id %>"></audio>
             </div>
           </div>
         <% end %>
