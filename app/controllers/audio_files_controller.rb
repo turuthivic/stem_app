@@ -97,9 +97,11 @@ class AudioFilesController < ApplicationController
 
   def send_stem(attachment)
     if attachment.attached?
-      send_data attachment.download,
-                type: attachment.content_type,
-                disposition: 'inline'
+      # Redirect to Active Storage URL for better performance:
+      # - Enables browser caching
+      # - Supports HTTP byte-range requests (instant seeking)
+      # - Serves directly from storage (bypasses Rails)
+      redirect_to rails_blob_path(attachment, disposition: "inline"), allow_other_host: true
     else
       head :not_found
     end

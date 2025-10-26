@@ -21,8 +21,19 @@ default: &default
 
 
 development:
-  <<: *default
-  database: stem_app_development
+  primary:
+    <<: *default
+    database: storage/stem_app_development
+
+  queue:
+    <<: *default
+    database: storage/stem_app_development_queue
+    migrations_paths: db/queue_migrate
+
+  cable:
+    <<: *default
+    database: storage/stem_app_development_cable
+    migrations_paths: db/cable_migrate
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.
@@ -55,8 +66,14 @@ development:
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
-  <<: *default
-  database: stem_app_test
+  primary:
+    <<: *default
+    database: stem_app_test
+
+  queue:
+    <<: *default
+    database: stem_app_test_queue
+    migrations_paths: db/queue_migrate
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is

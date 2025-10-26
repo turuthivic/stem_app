@@ -27,6 +27,7 @@ class AudioFile < ApplicationRecord
   # Callbacks
   before_validation :extract_metadata, if: -> { original_file.attached? }
   after_create :enqueue_separation_job, unless: -> { Rails.env.test? }
+  after_update :broadcast_status_update, if: -> { saved_change_to_status? && !Rails.env.test? }
 
   # Scopes
   scope :recent, -> { order(created_at: :desc) }
@@ -81,5 +82,15 @@ class AudioFile < ApplicationRecord
 
   def enqueue_separation_job
     AudioSeparationJob.perform_later(self)
+  end
+
+  def broadcast_status_update
+    # Broadcast the entire audio_file partial replacement
+    broadcast_replace_to(
+      "audio_file_#{id}",
+      target: self,
+      partial: "audio_files/audio_file",
+      locals: { audio_file: self }
+    )
   end
 end
