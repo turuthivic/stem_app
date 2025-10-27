@@ -4,6 +4,7 @@ Rails.application.routes.draw do
     member do
       get :stems # For serving individual stems
       get :download # For downloading processed files
+      post :retry # For retrying failed processing jobs
     end
   end
 

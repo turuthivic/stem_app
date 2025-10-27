@@ -35,6 +35,22 @@ class AudioFile < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :by_status, ->(status) { where(status: status) }
 
+  # Class methods
+  def self.find_duplicate(title)
+    where(title: title).order(created_at: :desc).first
+  end
+
+  # Instance methods
+  def retry_processing!
+    return unless failed?
+
+    # Update status back to uploaded
+    update!(status: :uploaded, error_message: nil)
+
+    # Enqueue a new separation job
+    AudioSeparationJob.perform_later(self)
+  end
+
   private
 
   def acceptable_audio_format

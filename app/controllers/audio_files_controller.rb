@@ -1,5 +1,5 @@
 class AudioFilesController < ApplicationController
-  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download]
+  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download, :retry]
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
@@ -15,6 +15,16 @@ class AudioFilesController < ApplicationController
 
   def create
     @audio_file = AudioFile.new(audio_file_params)
+
+    # Check for duplicates before saving
+    if @audio_file.title.present?
+      existing = AudioFile.find_duplicate(@audio_file.title)
+
+      if existing
+        handle_duplicate(existing)
+        return
+      end
+    end
 
     respond_to do |format|
       if @audio_file.save
@@ -93,7 +103,47 @@ class AudioFilesController < ApplicationController
     end
   end
 
+  def retry
+    if @audio_file.failed?
+      @audio_file.retry_processing!
+      redirect_to @audio_file, notice: 'Processing restarted. Your file will be processed shortly.'
+    else
+      redirect_to @audio_file, alert: 'Only failed files can be retried.'
+    end
+  end
+
   private
+
+  def handle_duplicate(existing)
+    respond_to do |format|
+      case existing.status
+      when 'completed'
+        # Redirect to existing completed file
+        format.html { redirect_to existing, notice: "A file with this title already exists and has been processed." }
+        format.turbo_stream { redirect_to existing }
+
+      when 'failed'
+        # Show options: retry existing or upload new
+        format.html do
+          @existing_audio_file = existing
+          @new_audio_file = @audio_file
+          render :duplicate_failed, status: :unprocessable_entity
+        end
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "upload_form",
+            partial: "audio_files/duplicate_warning",
+            locals: { existing: existing, new_audio_file: @audio_file }
+          )
+        end
+
+      when 'processing', 'uploaded'
+        # Redirect to existing file that's still processing
+        format.html { redirect_to existing, notice: "A file with this title is already being processed." }
+        format.turbo_stream { redirect_to existing }
+      end
+    end
+  end
 
   def set_audio_file
     @audio_file = AudioFile.find(params[:id])
