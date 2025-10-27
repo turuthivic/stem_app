@@ -1,6 +1,6 @@
 <%= turbo_frame_tag audio_file do %>
   <div class="p-6 hover:bg-gray-50 transition-colors">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <!-- File Info -->
       <div class="flex-1">
         <div class="flex items-center space-x-4">
@@ -36,7 +36,7 @@
           </div>
 
           <!-- File Details -->
-          <div class="flex-1 min-w-0 max-w-xs md:max-w-sm lg:max-w-md">
+          <div class="flex-1 min-w-0">
             <h3 class="text-lg font-medium text-gray-900 truncate" title="<%= audio_file.title %>">
               <%= link_to audio_file.title, audio_file, class: "hover:text-blue-600 transition-colors", data: { turbo_frame: "_top" }, title: audio_file.title %>
             </h3>
@@ -78,7 +78,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-start space-x-2 ml-4">
+      <div class="flex items-start space-x-2 md:ml-4 flex-shrink-0">
         <% if audio_file.completed? %>
           <div class="flex flex-col space-y-3">
             <!-- Preview buttons and download button in same row -->
