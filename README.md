@@ -5,11 +5,11 @@ A Rails 8 application for separating audio files into individual stems (vocals, 
 ## Features
 
 - **Audio Upload**: Drag-and-drop or file picker interface for audio files (MP3, WAV, FLAC, M4A)
-- **Stem Separation**: Separate audio into vocals and accompaniment using signal processing
+- **ML-Based Stem Separation**: Professional-quality separation using Demucs (htdemucs model)
 - **Real-time Progress Tracking**: Live updates via Turbo Streams during separation
-- **Background Processing**: Sidekiq-powered async job processing
-- **Audio Playback**: Built-in audio player for original and separated stems
-- **Multiple Separation Types**: Support for vocals/accompaniment, drums, bass, and piano separation
+- **Background Processing**: Solid Queue-powered async job processing
+- **Audio Playback**: Built-in Plyr audio player for original and separated stems
+- **Industry-Standard Results**: Separates vocals from accompaniment (drums, bass, other)
 
 ## Tech Stack
 
@@ -69,8 +69,8 @@ This starts:
 - **AudioSeparationJob**: Handles async audio separation using Python scripts
 
 ### Python Processing
-- `lib/audio_processing/simple_separate.py`: Basic center-channel extraction for demo purposes
-- `lib/audio_processing/separate_audio.py`: Advanced ML-based separation using Demucs (future)
+- `lib/audio_processing/separate_audio.py`: ML-based separation using Demucs htdemucs model (ACTIVE)
+- `lib/audio_processing/simple_separate.py`: Basic center-channel extraction (legacy demo version)
 
 ### Stimulus Controllers
 - **audio_player_controller**: Audio playback controls
@@ -95,9 +95,9 @@ docker run -p 3000:3000 stem-app
 
 ## Future Enhancements
 
-- Implement full Demucs ML-based separation
-- Support for 4-stem separation (vocals, drums, bass, other)
+- GPU acceleration for faster Demucs processing
+- Support for exposing individual 4-stem outputs (vocals, drums, bass, other) in UI
 - Batch processing of multiple files
 - User authentication and file management
-- Export in multiple formats
-- Audio preview before downloading
+- Export in multiple formats (MP3, FLAC, OGG)
+- Audio waveform visualization with WaveSurfer.js

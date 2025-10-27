@@ -61,8 +61,12 @@ class AudioFilesController < ApplicationController
     case stem_type
     when 'vocals'
       send_stem(@audio_file.vocals_stem)
-    when 'accompaniment'
-      send_stem(@audio_file.accompaniment_stem)
+    when 'drums'
+      send_stem(@audio_file.drums_stem)
+    when 'bass'
+      send_stem(@audio_file.bass_stem)
+    when 'other'
+      send_stem(@audio_file.other_stem)
     when 'original'
       send_stem(@audio_file.original_file)
     else
@@ -76,8 +80,12 @@ class AudioFilesController < ApplicationController
     case stem_type
     when 'vocals'
       send_download(@audio_file.vocals_stem, "#{@audio_file.title}_vocals.wav")
-    when 'accompaniment'
-      send_download(@audio_file.accompaniment_stem, "#{@audio_file.title}_accompaniment.wav")
+    when 'drums'
+      send_download(@audio_file.drums_stem, "#{@audio_file.title}_drums.wav")
+    when 'bass'
+      send_download(@audio_file.bass_stem, "#{@audio_file.title}_bass.wav")
+    when 'other'
+      send_download(@audio_file.other_stem, "#{@audio_file.title}_other.wav")
     when 'original'
       send_download(@audio_file.original_file, @audio_file.original_file.filename.to_s)
     else

@@ -2,7 +2,9 @@ class AudioFile < ApplicationRecord
   # Active Storage attachments
   has_one_attached :original_file
   has_one_attached :vocals_stem
-  has_one_attached :accompaniment_stem
+  has_one_attached :drums_stem
+  has_one_attached :bass_stem
+  has_one_attached :other_stem
 
   # Associations
   has_many :separation_jobs, dependent: :destroy

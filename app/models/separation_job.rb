@@ -47,9 +47,51 @@ class SeparationJob < ApplicationRecord
   def estimated_completion
     return nil unless running? && progress > 0
 
-    elapsed = Time.current - started_at
-    total_estimated = (elapsed / progress) * 100
-    started_at + total_estimated.seconds
+    # ML separation is very CPU-intensive and takes much longer than the progress % suggests
+    # Progress 0-30% is fast (initialization), 30-70% is very slow (ML separation), 70-100% is fast (saving)
+    # Better to estimate based on audio file duration
+
+    if audio_file&.duration
+      # Processing time depends on hardware (GPU vs CPU)
+      # GPU (Apple Silicon/NVIDIA): ~0.3-0.5x the audio duration
+      # CPU: ~1.5-2.5x the audio duration
+
+      # Check if we have GPU info in progress messages (we could track this better in the future)
+      # For now, estimate conservatively assuming CPU, but reduce for typical M2 performance
+      multiplier = if audio_file.duration > 300 # 5 minutes
+        1.0  # With GPU, even long files are much faster
+      else
+        0.5  # Short files process very quickly on GPU
+      end
+
+      estimated_total_seconds = audio_file.duration * multiplier
+
+      # Adjust based on current progress
+      if progress < 30
+        # Still in fast initialization phase
+        started_at + estimated_total_seconds.seconds
+      elsif progress < 70
+        # In slow ML separation phase - this is 70% of total time
+        elapsed = Time.current - started_at
+        # We're in the 70% slow phase, estimate accordingly
+        progress_in_slow_phase = (progress - 30) / 40.0  # 30-70 is 40% range
+        slow_phase_duration = estimated_total_seconds * 0.7
+        remaining_slow_phase = slow_phase_duration * (1 - progress_in_slow_phase)
+        fast_phase_remaining = estimated_total_seconds * 0.15  # 15% for final phase
+        Time.current + (remaining_slow_phase + fast_phase_remaining).seconds
+      else
+        # In fast final phase
+        elapsed = Time.current - started_at
+        remaining_percent = (100 - progress) / 100.0
+        estimated_remaining = (estimated_total_seconds * 0.15) * remaining_percent
+        Time.current + estimated_remaining.seconds
+      end
+    else
+      # Fallback to simple progress-based calculation
+      elapsed = Time.current - started_at
+      total_estimated = (elapsed / progress) * 100
+      started_at + total_estimated.seconds
+    end
   end
 
   def mark_as_started!

@@ -66,8 +66,8 @@ class AudioSeparationJob < ApplicationJob
       output_dir = File.join(temp_dir, "output")
       Dir.mkdir(output_dir)
 
-      # Run Python separation script
-      script_path = Rails.root.join("lib", "audio_processing", "simple_separate.py")
+      # Run Python separation script (using Demucs ML-based separation)
+      script_path = Rails.root.join("lib", "audio_processing", "separate_audio.py")
       command = [
         "python3",
         script_path.to_s,
@@ -121,10 +121,16 @@ class AudioSeparationJob < ApplicationJob
 
         unless status.success?
           stderr_output = stderr.read
+          Rails.logger.error "Python script failed with exit code #{status.exitstatus}"
+          Rails.logger.error "STDERR: #{stderr_output}"
           result = {
             success: false,
             error: "Separation script failed with exit code #{status.exitstatus}. Error: #{stderr_output}"
           }
+        else
+          # Read any remaining stderr even on success (might have warnings)
+          stderr_output = stderr.read
+          Rails.logger.info "STDERR (warnings): #{stderr_output}" if stderr_output && !stderr_output.empty?
         end
 
         # If we didn't get a result from JSON parsing, it's an error
@@ -164,11 +170,27 @@ class AudioSeparationJob < ApplicationJob
             content_type: "audio/wav"
           )
         end
-      when "accompaniment"
+      when "drums"
         File.open(file_path, "rb") do |file|
-          audio_file.accompaniment_stem.attach(
+          audio_file.drums_stem.attach(
             io: file,
-            filename: "#{audio_file.title}_accompaniment.wav",
+            filename: "#{audio_file.title}_drums.wav",
+            content_type: "audio/wav"
+          )
+        end
+      when "bass"
+        File.open(file_path, "rb") do |file|
+          audio_file.bass_stem.attach(
+            io: file,
+            filename: "#{audio_file.title}_bass.wav",
+            content_type: "audio/wav"
+          )
+        end
+      when "other"
+        File.open(file_path, "rb") do |file|
+          audio_file.other_stem.attach(
+            io: file,
+            filename: "#{audio_file.title}_other.wav",
             content_type: "audio/wav"
           )
         end

@@ -16,10 +16,11 @@ import traceback
 try:
     import torch
     import torchaudio
-    import demucs.api
-    import librosa
+    from demucs.pretrained import get_model
+    from demucs.apply import apply_model
     import soundfile as sf
     import numpy as np
+    import librosa
 except ImportError as e:
     print(json.dumps({
         "status": "error",
@@ -49,77 +50,86 @@ def separate_audio(input_path, output_dir, job_id=None):
         dict: Status and paths to separated files
     """
     try:
-        update_progress(0, "Initializing audio separation...")
+        update_progress(0, "Initializing Demucs separation...")
 
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
 
-        # Load the audio file to verify it's valid
-        update_progress(10, "Loading audio file...")
-        try:
-            waveform, sample_rate = torchaudio.load(input_path)
-        except Exception as e:
-            # Fallback to librosa for more format support
-            audio_data, sample_rate = librosa.load(input_path, sr=None, mono=False)
-            if len(audio_data.shape) == 1:
-                audio_data = audio_data[np.newaxis, :]
-            waveform = torch.from_numpy(audio_data).float()
+        update_progress(10, "Loading Demucs htdemucs model...")
 
-        # Convert to stereo if mono
-        if waveform.shape[0] == 1:
-            waveform = waveform.repeat(2, 1)
-
-        update_progress(20, "Preparing separation model...")
-
-        # Use Demucs for separation
-        # htdemucs is a good balance of quality and speed
-        separator = demucs.api.Separator(model="htdemucs")
-
-        update_progress(30, "Running audio separation...")
-
-        # Perform separation
-        waveform_np = waveform.numpy()
-
-        # Demucs expects (channels, samples) format
-        if len(waveform_np.shape) == 2 and waveform_np.shape[0] == 2:
-            separated = separator(waveform_np, sample_rate=sample_rate)
+        # Detect best available device (GPU or CPU)
+        if torch.cuda.is_available():
+            device = 'cuda'
+            update_progress(12, f"Using NVIDIA GPU (CUDA) for acceleration...")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            device = 'mps'  # Apple Silicon (M1/M2/M3) Metal Performance Shaders
+            update_progress(12, f"Using Apple Silicon GPU (Metal) for acceleration...")
         else:
-            # Convert to stereo if needed
-            if len(waveform_np.shape) == 1:
-                waveform_np = np.stack([waveform_np, waveform_np])
-            separated = separator(waveform_np, sample_rate=sample_rate)
+            device = 'cpu'
+            update_progress(12, f"Using CPU (no GPU detected)...")
+
+        # Load the pretrained Demucs model
+        # htdemucs is a good balance of quality and speed (Hybrid Transformer Demucs)
+        model = get_model('htdemucs')
+        model.to(device)
+
+        update_progress(20, "Loading audio file...")
+
+        # Load the audio file - try multiple methods for compatibility
+        try:
+            # First try soundfile for common audio formats (WAV, FLAC, OGG)
+            data, sr = sf.read(input_path, always_2d=True)
+            wav = torch.from_numpy(data.T).float()  # Convert to torch tensor and transpose to (channels, samples)
+        except Exception as e:
+            # Fall back to librosa for video files and other formats (uses ffmpeg/audioread)
+            # librosa loads as mono by default, so set mono=False to keep stereo
+            data, sr = librosa.load(input_path, sr=None, mono=False)
+            # librosa returns shape (samples,) for mono or (channels, samples) for stereo
+            if data.ndim == 1:
+                data = data.reshape(1, -1)  # Add channel dimension for mono
+            wav = torch.from_numpy(data).float()
+
+        # Resample if necessary
+        if sr != model.samplerate:
+            resampler = torchaudio.transforms.Resample(sr, model.samplerate)
+            wav = resampler(wav)
+
+        # Ensure correct number of channels
+        if wav.shape[0] < model.audio_channels:
+            # Mono to stereo: duplicate channel
+            wav = wav.repeat(model.audio_channels, 1)
+        elif wav.shape[0] > model.audio_channels:
+            # Stereo to mono: average channels
+            wav = wav.mean(dim=0, keepdim=True)
+
+        # wav shape should be (channels, samples)
+        # Store the original sample rate and duration for metadata
+        original_sr = sr
+        duration = wav.shape[1] / model.samplerate
+
+        update_progress(30, "Running ML-based audio separation...")
+
+        # Apply the model to separate sources
+        # apply_model expects shape (batch, channels, samples), so add batch dimension
+        wav = wav.unsqueeze(0).to(device)  # Shape: (1, channels, samples) and move to GPU
+
+        # sources shape after processing: (batch, num_sources, channels, samples)
+        with torch.no_grad():
+            sources = apply_model(model, wav, device=device, split=True, overlap=0.25)
+
+        # Remove batch dimension: (num_sources, channels, samples)
+        sources = sources[0]
 
         update_progress(70, "Processing separated stems...")
 
-        # Extract vocals and accompaniment (other stems)
+        # Get stem names from model
+        # model.sources typically contains: ['drums', 'bass', 'other', 'vocals']
+        stem_names = model.sources
+
+        # Extract all 4 individual stems
         stems = {}
-
-        # Demucs typically returns: drums, bass, other, vocals
-        if 'vocals' in separated:
-            stems['vocals'] = separated['vocals']
-
-            # Combine everything except vocals for accompaniment
-            accompaniment = None
-            for key in separated:
-                if key != 'vocals':
-                    if accompaniment is None:
-                        accompaniment = separated[key]
-                    else:
-                        accompaniment += separated[key]
-            stems['accompaniment'] = accompaniment
-        else:
-            # Fallback: assume first stem is vocals, combine rest as accompaniment
-            stem_keys = list(separated.keys())
-            if len(stem_keys) >= 1:
-                stems['vocals'] = separated[stem_keys[0]]
-
-                accompaniment = None
-                for key in stem_keys[1:]:
-                    if accompaniment is None:
-                        accompaniment = separated[key]
-                    else:
-                        accompaniment += separated[key]
-                stems['accompaniment'] = accompaniment
+        for idx, name in enumerate(stem_names):
+            stems[name] = sources[idx]
 
         update_progress(80, "Saving separated audio files...")
 
@@ -128,25 +138,30 @@ def separate_audio(input_path, output_dir, job_id=None):
         for stem_name, stem_audio in stems.items():
             output_path = os.path.join(output_dir, f"{stem_name}.wav")
 
-            # Ensure audio is in correct format for saving
-            if isinstance(stem_audio, torch.Tensor):
-                stem_audio = stem_audio.numpy()
+            # Move to CPU and convert to numpy
+            stem_audio = stem_audio.cpu().numpy()
 
             # Normalize audio to prevent clipping
-            if np.max(np.abs(stem_audio)) > 0:
-                stem_audio = stem_audio / np.max(np.abs(stem_audio)) * 0.95
+            max_val = np.max(np.abs(stem_audio))
+            if max_val > 0:
+                stem_audio = stem_audio / max_val * 0.95
 
-            # Save as WAV
-            sf.write(output_path, stem_audio.T, sample_rate)
+            # Save as WAV (audio is in format [channels, samples])
+            # Transpose to [samples, channels] for soundfile
+            stem_audio = stem_audio.T
+
+            sf.write(output_path, stem_audio, model.samplerate)
             output_paths[stem_name] = output_path
 
         update_progress(100, "Audio separation completed successfully!")
 
         return {
             "status": "success",
-            "message": "Audio separation completed",
+            "message": "ML-based audio separation completed with Demucs htdemucs",
             "output_paths": output_paths,
-            "job_id": job_id
+            "job_id": job_id,
+            "sample_rate": model.samplerate,
+            "duration": duration
         }
 
     except Exception as e:
