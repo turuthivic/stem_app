@@ -7,6 +7,13 @@ class AudioSeparationJob < ApplicationJob
   queue_as :default
 
   def perform(audio_file)
+    # Guard clause: Check if audio_file still exists
+    # This handles the case where the audio file was deleted while job was queued
+    unless audio_file && audio_file.persisted?
+      Rails.logger.info "AudioSeparationJob skipped: AudioFile no longer exists"
+      return
+    end
+
     # Create a separation job record to track progress
     separation_job = audio_file.separation_jobs.build(
       separation_type: :vocals_accompaniment,
@@ -17,6 +24,13 @@ class AudioSeparationJob < ApplicationJob
     begin
       # Mark job as started
       separation_job.mark_as_started!
+
+      # Check if job was cancelled (audio file deleted during processing)
+      separation_job.reload
+      if separation_job.cancelled?
+        Rails.logger.info "AudioSeparationJob cancelled for job #{separation_job.id}"
+        return
+      end
 
       # Perform the actual audio separation
       # Note: This method now handles stem attachment internally before cleanup
@@ -32,10 +46,24 @@ class AudioSeparationJob < ApplicationJob
         raise StandardError, "Audio separation failed"
       end
 
+    rescue ActiveRecord::RecordNotFound => e
+      # Audio file was deleted during processing - this is expected behavior
+      Rails.logger.info "AudioSeparationJob stopped: AudioFile was deleted during processing"
+      # Don't raise error - this is not a failure, just a cancellation
+      return
     rescue => e
-      Rails.logger.error "Audio separation failed for AudioFile #{audio_file.id}: #{e.message}"
-      audio_file.update!(status: :failed)
-      separation_job.mark_as_failed!(e.message)
+      # Only update records if they still exist
+      begin
+        audio_file.reload
+        separation_job.reload
+
+        Rails.logger.error "Audio separation failed for AudioFile #{audio_file.id}: #{e.message}"
+        audio_file.update!(status: :failed)
+        separation_job.mark_as_failed!(e.message)
+      rescue ActiveRecord::RecordNotFound
+        Rails.logger.info "Cannot mark job as failed - records were deleted"
+      end
+
       raise e
     end
   end

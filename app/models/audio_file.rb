@@ -28,6 +28,7 @@ class AudioFile < ApplicationRecord
 
   # Callbacks
   before_validation :extract_metadata, if: -> { original_file.attached? }
+  before_destroy :cancel_running_jobs
   after_create :enqueue_separation_job, unless: -> { Rails.env.test? }
   after_update :broadcast_status_update, if: -> { saved_change_to_status? && !Rails.env.test? }
 
@@ -110,5 +111,14 @@ class AudioFile < ApplicationRecord
       partial: "audio_files/audio_file",
       locals: { audio_file: self }
     )
+  end
+
+  def cancel_running_jobs
+    # Mark any active separation jobs as cancelled before destroying the record
+    # This prevents background jobs from crashing when they try to access deleted records
+    separation_jobs.active.each do |job|
+      job.update(status: :cancelled, completed_at: Time.current)
+      Rails.logger.info "Cancelled separation job #{job.id} for AudioFile #{id}"
+    end
   end
 end

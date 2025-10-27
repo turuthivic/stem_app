@@ -138,6 +138,9 @@ class SeparationJob < ApplicationRecord
   end
 
   def update_audio_file_status
+    # Guard against deleted audio files
+    return unless audio_file.present?
+
     case status
     when "running"
       audio_file.update!(status: :processing) if audio_file.uploaded?
@@ -145,6 +148,13 @@ class SeparationJob < ApplicationRecord
       audio_file.update!(status: :completed) if audio_file.processing?
     when "failed"
       audio_file.update!(status: :failed) if audio_file.processing?
+    when "cancelled"
+      # Don't update audio file status - it's likely being deleted
+      # or has already been deleted
+      Rails.logger.info "SeparationJob #{id} cancelled, skipping audio_file status update"
     end
+  rescue ActiveRecord::RecordNotFound
+    # Audio file was deleted, this is expected for cancelled jobs
+    Rails.logger.debug "Audio file not found when updating status for SeparationJob #{id}"
   end
 end
