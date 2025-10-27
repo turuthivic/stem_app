@@ -45,6 +45,18 @@
   - Wait for native `canplay` event before auto-playing
   - Seamless, fast track switching with great UX
 
+## 🎉 COMPLETED (Session 4 - 2025-10-26)
+
+### Machine Learning Integration
+- ✅ **Upgraded to Demucs ML-based Separation** - Professional-quality stem separation
+  - Replaced simple center-channel extraction with Demucs htdemucs model
+  - Updated `lib/audio_processing/separate_audio.py` to use `demucs.pretrained` and `demucs.apply`
+  - Updated `AudioSeparationJob` to use ML-based script instead of simple_separate.py
+  - Installed all required dependencies: demucs, torch, torchaudio
+  - Now provides industry-standard audio separation results
+  - Supports 4-stem separation internally (vocals, drums, bass, other)
+  - Combines drums/bass/other into "accompaniment" for the app
+
 ## 🎉 COMPLETED (Session 2 - 2025-10-24)
 
 ### Performance Optimization
@@ -99,20 +111,6 @@
 ---
 
 ### 🔧 MEDIUM PRIORITY - Technical Improvements
-
-#### Upgrade to Demucs ML-based Separation
-**Current:** Using simple center-channel extraction (demo quality)
-**Needed:** Integrate actual Demucs model for professional separation
-
-**Files:**
-- `lib/audio_processing/separate_audio.py` - Already exists but not used
-- `requirements.txt` - Already has demucs>=4.0.0
-- Update `AudioSeparationJob` to use Demucs script instead
-
-**Benefits:**
-- Professional-quality stem separation
-- Support for 4-stem separation (vocals, drums, bass, other)
-- Industry-standard results
 
 #### Better Error Handling & Logging
 - Add error tracking (Sentry, Rollbar, etc.)
@@ -213,15 +211,15 @@
 ### Key Files
 - Models: `app/models/audio_file.rb`, `app/models/separation_job.rb`
 - Jobs: `app/jobs/audio_separation_job.rb`
-- Python: `lib/audio_processing/simple_separate.py`, `lib/audio_processing/separate_audio.py`
+- Python: `lib/audio_processing/separate_audio.py` (Demucs ML-based - ACTIVE), `lib/audio_processing/simple_separate.py` (legacy demo version)
 - Controllers: `app/controllers/audio_files_controller.rb`
 - Views: `app/views/audio_files/`
 - Stimulus: `app/javascript/controllers/audio_player_controller.js`
 
 ### Known Issues
-- Python script uses basic center-channel extraction (not production quality)
 - No user authentication
 - No file size limits enforced at storage level
+- Demucs processing is CPU-only (GPU support could improve speed)
 
 ### Environment Setup
 - Ruby 3.3+
@@ -236,11 +234,12 @@
 
 1. ✅ **Fix audio file serving** - COMPLETED! (Session 2)
 2. ✅ **Fix Plyr audio player issues** - COMPLETED! (Session 3)
-3. **Consider Demucs upgrade** - For production-quality separation
+3. ✅ **Upgrade to Demucs ML-based separation** - COMPLETED! (Session 4)
 4. **Add user authentication** - If planning to deploy
 5. **Add waveform visualization** - Consider WaveSurfer.js
+6. **Optimize Demucs performance** - Consider GPU support for faster processing
 
 ---
 
 *Last Updated: 2025-10-26*
-*Session 3: Plyr Audio Player Bug Fixes Complete*
+*Session 4: ML-Based Audio Separation with Demucs Complete*
