@@ -9,7 +9,18 @@
 #     priority: 2
 #     schedule: at 5am every day
 
+development:
+  cleanup_orphaned_jobs:
+    class: SolidQueueCleanupJob
+    queue: default
+    schedule: every 30 minutes
+
 production:
+  cleanup_orphaned_jobs:
+    class: SolidQueueCleanupJob
+    queue: default
+    schedule: every 15 minutes
+
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
