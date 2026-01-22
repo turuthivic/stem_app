@@ -159,10 +159,12 @@ class AudioFilesController < ApplicationController
 
         if json_result['status'] == 'success' && File.exist?(output_path)
           filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.wav"
+          # Use inline disposition for streaming playback, attachment for download
+          disposition = params[:format] == 'stream' ? 'inline' : 'attachment'
           # Use send_data instead of send_file to read file before temp dir is deleted
           send_data File.binread(output_path),
                     type: 'audio/wav',
-                    disposition: 'attachment',
+                    disposition: disposition,
                     filename: filename
         else
           Rails.logger.error "Mix stems failed: #{json_result['error']}"
