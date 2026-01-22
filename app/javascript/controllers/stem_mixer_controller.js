@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["checkbox", "mixControls", "playButton", "stopButton", "downloadButton"]
+  static targets = ["checkbox", "slider", "volumeLabel", "mixControls", "playButton", "stopButton", "downloadButton"]
   static values = {
     audioFileId: Number,
     mixUrl: String
@@ -10,8 +10,16 @@ export default class extends Controller {
   connect() {
     this.audioContext = null
     this.audioBuffers = new Map()
+    this.gainNodes = new Map()
     this.sourceNodes = []
     this.isPlaying = false
+    this.volumes = new Map() // Store volume levels per stem
+
+    // Initialize default volumes
+    this.checkboxTargets.forEach(cb => {
+      this.volumes.set(cb.value, 1.0)
+    })
+
     this.updateMixControls()
   }
 
@@ -24,6 +32,32 @@ export default class extends Controller {
 
   toggleStem(event) {
     this.updateMixControls()
+
+    // If currently playing, restart mix with new selection
+    if (this.isPlaying) {
+      this.playMix()
+    }
+  }
+
+  updateVolume(event) {
+    const slider = event.target
+    const stemType = slider.dataset.stemType
+    const volume = parseFloat(slider.value)
+
+    // Store volume
+    this.volumes.set(stemType, volume)
+
+    // Update label
+    const label = this.volumeLabelTargets.find(l => l.dataset.stemType === stemType)
+    if (label) {
+      label.textContent = `${Math.round(volume * 100)}%`
+    }
+
+    // Update gain node in real-time if playing
+    if (this.gainNodes.has(stemType)) {
+      const gainNode = this.gainNodes.get(stemType)
+      gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime)
+    }
   }
 
   getSelectedStems() {
@@ -64,15 +98,33 @@ export default class extends Controller {
     try {
       // Load all selected stems
       const loadPromises = selectedStems.map(stem => this.loadStem(stem))
-      const buffers = await Promise.all(loadPromises)
+      const bufferResults = await Promise.all(loadPromises)
 
-      // Start all sources at the same time
+      // Clear old gain nodes
+      this.gainNodes.clear()
+
+      // Start all sources at the same time with individual gain nodes
       const startTime = this.audioContext.currentTime + 0.1
-      buffers.forEach(buffer => {
-        if (buffer) {
+      bufferResults.forEach((result, index) => {
+        if (result && result.buffer) {
+          const stemType = selectedStems[index]
+
+          // Create source
           const source = this.audioContext.createBufferSource()
-          source.buffer = buffer
-          source.connect(this.audioContext.destination)
+          source.buffer = result.buffer
+
+          // Create gain node for volume control
+          const gainNode = this.audioContext.createGain()
+          const volume = this.volumes.get(stemType) || 1.0
+          gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime)
+
+          // Connect: source -> gain -> destination
+          source.connect(gainNode)
+          gainNode.connect(this.audioContext.destination)
+
+          // Store gain node for real-time updates
+          this.gainNodes.set(stemType, gainNode)
+
           source.start(startTime)
           source.onended = () => this.onSourceEnded()
           this.sourceNodes.push(source)
@@ -88,7 +140,7 @@ export default class extends Controller {
     // Check cache
     const cacheKey = `${this.audioFileIdValue}_${stemType}`
     if (this.audioBuffers.has(cacheKey)) {
-      return this.audioBuffers.get(cacheKey)
+      return { buffer: this.audioBuffers.get(cacheKey), stemType }
     }
 
     // Find the URL from the checkbox data attribute
@@ -103,7 +155,7 @@ export default class extends Controller {
       const arrayBuffer = await response.arrayBuffer()
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer)
       this.audioBuffers.set(cacheKey, audioBuffer)
-      return audioBuffer
+      return { buffer: audioBuffer, stemType }
     } catch (error) {
       console.error(`Error loading stem ${stemType}:`, error)
       return null
@@ -123,6 +175,7 @@ export default class extends Controller {
     if (allEnded) {
       this.setPlayingState(false)
       this.sourceNodes = []
+      this.gainNodes.clear()
     }
   }
 
@@ -135,6 +188,7 @@ export default class extends Controller {
       }
     })
     this.sourceNodes = []
+    this.gainNodes.clear()
     this.setPlayingState(false)
   }
 
@@ -151,8 +205,13 @@ export default class extends Controller {
     const selectedStems = this.getSelectedStems()
     if (selectedStems.length < 2) return
 
-    // Build the download URL with stem parameters
-    const url = `${this.mixUrlValue}?stems=${selectedStems.join(',')}`
+    // Build the download URL with stem parameters and volumes
+    const volumeParams = selectedStems.map(stem => {
+      const volume = this.volumes.get(stem) || 1.0
+      return `${stem}:${volume}`
+    }).join(',')
+
+    const url = `${this.mixUrlValue}?stems=${selectedStems.join(',')}&volumes=${volumeParams}`
 
     // Trigger download
     window.location.href = url

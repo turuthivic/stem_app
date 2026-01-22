@@ -1,12 +1,27 @@
 import { Controller } from "@hotwired/stimulus"
+import WaveSurfer from "wavesurfer.js"
 
 export default class extends Controller {
   static values = {
     playerContainer: String
   }
 
-  // Store Plyr instances globally to share across button instances
-  static players = new Map()
+  // Store WaveSurfer instances globally to share across button instances
+  static wavesurfers = new Map()
+
+  // Expose globally for waveform_player_controller
+  static {
+    window.audioPlayerWavesurfers = this.wavesurfers
+  }
+
+  // Stem color mapping
+  static stemColors = {
+    original: { waveColor: '#9ca3af', progressColor: '#4b5563' },
+    vocals: { waveColor: '#c084fc', progressColor: '#a855f7' },
+    drums: { waveColor: '#fdba74', progressColor: '#f97316' },
+    bass: { waveColor: '#93c5fd', progressColor: '#3b82f6' },
+    other: { waveColor: '#6ee7b7', progressColor: '#10b981' }
+  }
 
   connect() {
     // Each button gets its own controller instance
@@ -28,23 +43,15 @@ export default class extends Controller {
       return
     }
 
-    // Get the player container and related elements
+    // Get the player container
     const playerContainer = document.querySelector(containerSelector)
     if (!playerContainer) {
       console.error('Player container not found:', containerSelector)
       return
     }
 
-    const audioElement = playerContainer.querySelector('audio')
     const trackNameElement = playerContainer.querySelector('span[id^="track_name_"]')
-
-    if (!audioElement) {
-      console.error('Audio element not found in container')
-      return
-    }
-
-    // Stop other players
-    this.stopOtherPlayers()
+    const audioElement = playerContainer.querySelector('audio')
 
     // Show the player container
     playerContainer.classList.remove('hidden')
@@ -54,89 +61,156 @@ export default class extends Controller {
       trackNameElement.textContent = name
     }
 
-    // Check if Plyr instance exists
-    let player = this.constructor.players.get(audioElement.id)
+    // Get stem type from name for color
+    const stemType = name.toLowerCase()
+    const colors = this.constructor.stemColors[stemType] || this.constructor.stemColors.original
 
-    if (player) {
-      // Player exists - update the underlying audio element directly
-      console.log('Reusing existing Plyr instance, changing source to:', url)
+    // Stop all other WaveSurfer instances
+    this.stopOtherPlayers()
 
-      // Pause current playback
-      player.pause()
+    // Create or get waveform container
+    let waveformContainer = playerContainer.querySelector('.waveform-container')
+    if (!waveformContainer) {
+      waveformContainer = document.createElement('div')
+      waveformContainer.className = 'waveform-container mb-4'
 
-      // Update the underlying audio element's src directly (bypasses Plyr's source API)
-      audioElement.src = url
-      audioElement.type = url.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
+      // Create waveform wrapper with proper styling
+      const waveformWrapper = document.createElement('div')
+      waveformWrapper.id = `waveform_${audioElement.id}`
+      waveformWrapper.className = 'rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700/50'
+      waveformWrapper.style.height = '80px'
+      waveformContainer.appendChild(waveformWrapper)
 
-      // Load the new source
-      audioElement.load()
+      // Create time display
+      const timeDisplay = document.createElement('div')
+      timeDisplay.className = 'flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2'
+      timeDisplay.innerHTML = `
+        <span id="current_time_${audioElement.id}">0:00</span>
+        <span id="duration_${audioElement.id}">0:00</span>
+      `
+      waveformContainer.appendChild(timeDisplay)
 
-      // Play when ready
-      const playWhenReady = () => {
-        console.log('New track loaded, starting playback')
-        player.play().catch(error => {
-          console.error('Error playing new track:', error)
-        })
-        audioElement.removeEventListener('canplay', playWhenReady)
+      // Insert before track name area
+      const trackNameArea = playerContainer.querySelector('.flex.items-center.gap-3')
+      if (trackNameArea) {
+        trackNameArea.after(waveformContainer)
+      } else {
+        playerContainer.appendChild(waveformContainer)
       }
-
-      audioElement.addEventListener('canplay', playWhenReady, { once: true })
-
-    } else {
-      // No player exists - create a new one
-      console.log('Creating new Plyr instance for', audioElement.id)
-
-      // Set the source on the raw audio element BEFORE initializing Plyr
-      audioElement.src = url
-      audioElement.type = url.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
-
-      player = new Plyr(audioElement, {
-        controls: [
-          'play',
-          'progress',
-          'current-time',
-          'duration',
-          'mute',
-          'volume',
-          'settings',
-          'download'
-        ],
-        settings: ['speed'],
-        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-        hideControls: false,
-        resetOnEnd: true
-      })
-
-      // Store the player instance
-      this.constructor.players.set(audioElement.id, player)
-
-      // Stop other players when this one starts
-      player.on('play', () => {
-        console.log('Play event triggered for', audioElement.id)
-        this.stopOtherPlayers(audioElement.id)
-      })
-
-      player.on('error', (event) => {
-        console.error('Plyr error event:', event)
-      })
-
-      // Add ready handler to auto-play once loaded
-      player.on('canplay', () => {
-        console.log('Audio can play, starting playback')
-        player.play().catch(error => {
-          console.error('Error auto-playing audio:', error)
-        })
-      })
     }
+
+    const waveformId = `waveform_${audioElement.id}`
+    const waveformElement = document.getElementById(waveformId)
+
+    // Get or create WaveSurfer instance
+    let wavesurfer = this.constructor.wavesurfers.get(audioElement.id)
+
+    if (wavesurfer) {
+      // Destroy existing instance to load new track
+      wavesurfer.destroy()
+    }
+
+    // Create new WaveSurfer instance with stem-specific colors
+    wavesurfer = WaveSurfer.create({
+      container: waveformElement,
+      waveColor: colors.waveColor,
+      progressColor: colors.progressColor,
+      cursorColor: '#6366f1',
+      cursorWidth: 2,
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 2,
+      height: 80,
+      normalize: true,
+      backend: 'WebAudio',
+      mediaControls: false
+    })
+
+    // Store instance
+    this.constructor.wavesurfers.set(audioElement.id, wavesurfer)
+
+    // Load the audio
+    wavesurfer.load(url)
+
+    // Update time display
+    const currentTimeEl = document.getElementById(`current_time_${audioElement.id}`)
+    const durationEl = document.getElementById(`duration_${audioElement.id}`)
+
+    wavesurfer.on('ready', () => {
+      console.log('WaveSurfer ready, starting playback')
+      if (durationEl) {
+        durationEl.textContent = this.formatTime(wavesurfer.getDuration())
+      }
+      wavesurfer.play()
+    })
+
+    wavesurfer.on('audioprocess', () => {
+      if (currentTimeEl) {
+        currentTimeEl.textContent = this.formatTime(wavesurfer.getCurrentTime())
+      }
+    })
+
+    wavesurfer.on('seeking', () => {
+      if (currentTimeEl) {
+        currentTimeEl.textContent = this.formatTime(wavesurfer.getCurrentTime())
+      }
+    })
+
+    wavesurfer.on('finish', () => {
+      console.log('Playback finished')
+      this.updatePlayerControls(playerContainer, false)
+    })
+
+    wavesurfer.on('play', () => {
+      this.updatePlayerControls(playerContainer, true)
+    })
+
+    wavesurfer.on('pause', () => {
+      this.updatePlayerControls(playerContainer, false)
+    })
+
+    wavesurfer.on('error', (error) => {
+      console.error('WaveSurfer error:', error)
+    })
+
+    // Add controls with Plyr as fallback (hidden)
+    this.setupPlyrFallback(audioElement, url)
+  }
+
+  setupPlyrFallback(audioElement, url) {
+    // Update audio element as fallback
+    audioElement.src = url
+    audioElement.type = url.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
+
+    // Hide the raw audio element - WaveSurfer handles playback
+    audioElement.style.display = 'none'
+  }
+
+  formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   stopOtherPlayers(excludeId = null) {
-    // Stop all other Plyr instances except the one with excludeId
-    this.constructor.players.forEach((player, id) => {
-      if (id !== excludeId && !player.paused) {
+    // Stop all other WaveSurfer instances except the one with excludeId
+    this.constructor.wavesurfers.forEach((ws, id) => {
+      if (id !== excludeId && ws.isPlaying()) {
         console.log('Stopping player', id)
-        player.pause()
+        ws.pause()
       }
     })
+  }
+
+  updatePlayerControls(playerContainer, isPlaying) {
+    // Update play/pause icons in the waveform player controls
+    const playIcon = playerContainer.querySelector('[data-waveform-player-target="playIcon"]')
+    const pauseIcon = playerContainer.querySelector('[data-waveform-player-target="pauseIcon"]')
+
+    if (playIcon && pauseIcon) {
+      playIcon.classList.toggle('hidden', isPlaying)
+      pauseIcon.classList.toggle('hidden', !isPlaying)
+    }
   }
 }
