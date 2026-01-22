@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import WaveSurfer from "wavesurfer.js"
 
 export default class extends Controller {
-  static targets = ["checkbox", "slider", "volumeLabel", "mixControls", "playButton", "stopButton", "downloadButton"]
+  static targets = ["checkbox", "slider", "volumeLabel", "mixControls"]
   static values = {
     audioFileId: Number,
     mixUrl: String,
@@ -22,8 +22,8 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.stopMix()
     if (this.wavesurfer) {
+      this.wavesurfer.stop()
       this.wavesurfer.destroy()
       this.wavesurfer = null
     }
@@ -102,9 +102,6 @@ export default class extends Controller {
       const stemNames = selectedStems.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' + ')
       trackNameElement.textContent = `Mix: ${stemNames}`
     }
-
-    // Update UI
-    this.setPlayingState(true)
 
     // Create or get waveform container
     let waveformContainer = playerContainer.querySelector('.waveform-container')
@@ -191,7 +188,6 @@ export default class extends Controller {
 
     this.wavesurfer.on('finish', () => {
       console.log('Mix playback finished')
-      this.setPlayingState(false)
       this.updatePlayerControls(playerContainer, false)
     })
 
@@ -205,19 +201,11 @@ export default class extends Controller {
 
     this.wavesurfer.on('error', (error) => {
       console.error('Mix WaveSurfer error:', error)
-      this.setPlayingState(false)
     })
 
     // Store reference globally so waveform_player_controller can access it
     window.audioPlayerWavesurfers = window.audioPlayerWavesurfers || new Map()
     window.audioPlayerWavesurfers.set(audioElement.id, this.wavesurfer)
-  }
-
-  stopMix() {
-    if (this.wavesurfer) {
-      this.wavesurfer.stop()
-    }
-    this.setPlayingState(false)
   }
 
   stopOtherPlayers() {
@@ -228,13 +216,6 @@ export default class extends Controller {
           ws.pause()
         }
       })
-    }
-  }
-
-  setPlayingState(isPlaying) {
-    if (this.hasPlayButtonTarget && this.hasStopButtonTarget) {
-      this.playButtonTarget.classList.toggle('hidden', isPlaying)
-      this.stopButtonTarget.classList.toggle('hidden', !isPlaying)
     }
   }
 
