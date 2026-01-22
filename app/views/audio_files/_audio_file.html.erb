@@ -80,10 +80,10 @@
       <!-- Actions -->
       <div class="w-full md:w-auto md:ml-4 flex-shrink-0">
         <% if audio_file.completed? %>
-          <div class="space-y-2">
+          <div class="space-y-2" data-controller="stem-mixer" data-stem-mixer-audio-file-id-value="<%= audio_file.id %>" data-stem-mixer-mix-url-value="<%= mix_audio_file_path(audio_file) %>">
             <!-- Preview buttons: 2-col grid on mobile, horizontal on desktop -->
             <div class="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-              <!-- Preview buttons -->
+              <!-- Original preview button (no checkbox - not mixable) -->
               <button type="button"
                       data-controller="audio-player"
                       data-action="click->audio-player#loadTrack"
@@ -98,65 +98,125 @@
               </button>
 
               <% if audio_file.vocals_stem.attached? %>
-                <button type="button"
-                        data-controller="audio-player"
-                        data-action="click->audio-player#loadTrack"
-                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'vocals') %>"
-                        data-audio-player-name-param="Vocals"
-                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
-                        class="inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors w-full md:w-auto">
-                  <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-                  </svg>
-                  <span class="hidden md:inline">Vocals</span>
-                </button>
+                <div class="inline-flex items-center gap-1 w-full md:w-auto">
+                  <input type="checkbox" value="vocals"
+                         data-stem-mixer-target="checkbox"
+                         data-stem-url="<%= stems_audio_file_path(audio_file, stem_type: 'vocals') %>"
+                         data-action="change->stem-mixer#toggleStem"
+                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <button type="button"
+                          data-controller="audio-player"
+                          data-action="click->audio-player#loadTrack"
+                          data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'vocals') %>"
+                          data-audio-player-name-param="Vocals"
+                          data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
+                          class="flex-1 inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="hidden md:inline">Vocals</span>
+                  </button>
+                </div>
               <% end %>
 
               <% if audio_file.drums_stem.attached? %>
-                <button type="button"
-                        data-controller="audio-player"
-                        data-action="click->audio-player#loadTrack"
-                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'drums') %>"
-                        data-audio-player-name-param="Drums"
-                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
-                        class="inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors w-full md:w-auto">
-                  <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-                  </svg>
-                  <span class="hidden md:inline">Drums</span>
-                </button>
+                <div class="inline-flex items-center gap-1 w-full md:w-auto">
+                  <input type="checkbox" value="drums"
+                         data-stem-mixer-target="checkbox"
+                         data-stem-url="<%= stems_audio_file_path(audio_file, stem_type: 'drums') %>"
+                         data-action="change->stem-mixer#toggleStem"
+                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <button type="button"
+                          data-controller="audio-player"
+                          data-action="click->audio-player#loadTrack"
+                          data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'drums') %>"
+                          data-audio-player-name-param="Drums"
+                          data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
+                          class="flex-1 inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="hidden md:inline">Drums</span>
+                  </button>
+                </div>
               <% end %>
 
               <% if audio_file.bass_stem.attached? %>
-                <button type="button"
-                        data-controller="audio-player"
-                        data-action="click->audio-player#loadTrack"
-                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'bass') %>"
-                        data-audio-player-name-param="Bass"
-                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
-                        class="inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors w-full md:w-auto">
-                  <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-                  </svg>
-                  <span class="hidden md:inline">Bass</span>
-                </button>
+                <div class="inline-flex items-center gap-1 w-full md:w-auto">
+                  <input type="checkbox" value="bass"
+                         data-stem-mixer-target="checkbox"
+                         data-stem-url="<%= stems_audio_file_path(audio_file, stem_type: 'bass') %>"
+                         data-action="change->stem-mixer#toggleStem"
+                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <button type="button"
+                          data-controller="audio-player"
+                          data-action="click->audio-player#loadTrack"
+                          data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'bass') %>"
+                          data-audio-player-name-param="Bass"
+                          data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
+                          class="flex-1 inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="hidden md:inline">Bass</span>
+                  </button>
+                </div>
               <% end %>
 
               <% if audio_file.other_stem.attached? %>
-                <button type="button"
-                        data-controller="audio-player"
-                        data-action="click->audio-player#loadTrack"
-                        data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'other') %>"
-                        data-audio-player-name-param="Other"
-                        data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
-                        class="inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors w-full md:w-auto">
-                  <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-                  </svg>
-                  <span class="hidden md:inline">Other</span>
-                </button>
+                <div class="inline-flex items-center gap-1 w-full md:w-auto">
+                  <input type="checkbox" value="other"
+                         data-stem-mixer-target="checkbox"
+                         data-stem-url="<%= stems_audio_file_path(audio_file, stem_type: 'other') %>"
+                         data-action="change->stem-mixer#toggleStem"
+                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <button type="button"
+                          data-controller="audio-player"
+                          data-action="click->audio-player#loadTrack"
+                          data-audio-player-url-param="<%= stems_audio_file_path(audio_file, stem_type: 'other') %>"
+                          data-audio-player-name-param="Other"
+                          data-audio-player-player-container-value="#player_container_<%= audio_file.id %>"
+                          class="flex-1 inline-flex items-center justify-center px-2 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                    <svg class="w-3.5 h-3.5 md:mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="hidden md:inline">Other</span>
+                  </button>
+                </div>
               <% end %>
 
+            </div>
+
+            <!-- Mix Controls (hidden until 2+ stems selected) -->
+            <div data-stem-mixer-target="mixControls" class="hidden flex items-center gap-2 pt-2 border-t border-gray-200">
+              <span class="text-xs text-gray-500">Mix:</span>
+              <button type="button"
+                      data-stem-mixer-target="playButton"
+                      data-action="click->stem-mixer#playMix"
+                      class="inline-flex items-center px-2 py-1 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors">
+                <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                </svg>
+                Play
+              </button>
+              <button type="button"
+                      data-stem-mixer-target="stopButton"
+                      data-action="click->stem-mixer#stopMix"
+                      class="hidden inline-flex items-center px-2 py-1 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition-colors">
+                <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
+                </svg>
+                Stop
+              </button>
+              <button type="button"
+                      data-stem-mixer-target="downloadButton"
+                      data-action="click->stem-mixer#downloadMix"
+                      class="inline-flex items-center px-2 py-1 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
+                <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                Download
+              </button>
             </div>
 
             <!--Download dropdown -->
