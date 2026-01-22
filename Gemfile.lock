@@ -323,6 +323,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-24
+  arm64-darwin-25
 
 DEPENDENCIES
   bootsnap
@@ -348,4 +349,4 @@ DEPENDENCIES
   web-console
 
 BUNDLED WITH
-   2.7.2
+   2.6.9
