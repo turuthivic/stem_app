@@ -39,3 +39,7 @@
 # Ignore Redis dump files
 dump.rdb
 .claude/settings.local.json
+
+# Ignore Kamal secrets and configuration
+/.kamal/secrets
+/.kamal/secrets-*
