@@ -96,8 +96,9 @@ class AudioSeparationJob < ApplicationJob
 
       # Run Python separation script (using Demucs ML-based separation)
       script_path = Rails.root.join("lib", "audio_processing", "separate_audio.py")
+      python_path = Rails.root.join(".venv", "bin", "python3").to_s
       command = [
-        "python3",
+        python_path,
         script_path.to_s,
         input_path,
         output_dir,
