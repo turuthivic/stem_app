@@ -1,5 +1,6 @@
 class AudioFilesController < ApplicationController
-  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download]
+  before_action :set_audio_file,
+                only: %i[show edit update destroy stems download]
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
@@ -18,14 +19,19 @@ class AudioFilesController < ApplicationController
 
     respond_to do |format|
       if @audio_file.save
-        format.html { redirect_to @audio_file, notice: 'Audio file uploaded successfully! Processing will begin shortly.' }
+        format.html do
+          redirect_to @audio_file,
+                      notice: 'Audio file uploaded successfully! Processing will begin shortly.'
+        end
         format.turbo_stream { redirect_to @audio_file }
       else
         format.html { render :new, status: :unprocessable_entity }
         format.turbo_stream do
           render turbo_stream: [
-            turbo_stream.replace("upload_form", partial: "audio_files/upload_form", locals: { audio_file: @audio_file }),
-            turbo_stream.prepend("flash_messages", partial: "shared/flash", locals: { message: @audio_file.errors.full_messages.join(", "), type: "alert" })
+            turbo_stream.replace('upload_form',
+                                 partial: 'audio_files/upload_form', locals: { audio_file: @audio_file }),
+            turbo_stream.prepend('flash_messages', partial: 'shared/flash',
+                                                   locals: { message: @audio_file.errors.full_messages.join(', '), type: 'alert' })
           ]
         end
       end
@@ -38,11 +44,20 @@ class AudioFilesController < ApplicationController
   def update
     respond_to do |format|
       if @audio_file.update(audio_file_params.except(:original_file))
-        format.html { redirect_to @audio_file, notice: 'Audio file was successfully updated.' }
-        format.turbo_stream { render turbo_stream: turbo_stream.replace(@audio_file, partial: "audio_files/audio_file", locals: { audio_file: @audio_file }) }
+        format.html do
+          redirect_to @audio_file,
+                      notice: 'Audio file was successfully updated.'
+        end
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(@audio_file,
+                                                    partial: 'audio_files/audio_file', locals: { audio_file: @audio_file })
+        end
       else
         format.html { render :edit, status: :unprocessable_entity }
-        format.turbo_stream { render turbo_stream: turbo_stream.replace("edit_form", partial: "audio_files/edit_form", locals: { audio_file: @audio_file }) }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace('edit_form',
+                                                    partial: 'audio_files/edit_form', locals: { audio_file: @audio_file })
+        end
       end
     end
   end
@@ -50,8 +65,13 @@ class AudioFilesController < ApplicationController
   def destroy
     @audio_file.destroy
     respond_to do |format|
-      format.html { redirect_to audio_files_url, notice: 'Audio file was successfully deleted.' }
-      format.turbo_stream { render turbo_stream: turbo_stream.remove(@audio_file) }
+      format.html do
+        redirect_to audio_files_url,
+                    notice: 'Audio file was successfully deleted.'
+      end
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.remove(@audio_file)
+      end
     end
   end
 
@@ -77,9 +97,11 @@ class AudioFilesController < ApplicationController
     when 'vocals'
       send_download(@audio_file.vocals_stem, "#{@audio_file.title}_vocals.wav")
     when 'accompaniment'
-      send_download(@audio_file.accompaniment_stem, "#{@audio_file.title}_accompaniment.wav")
+      send_download(@audio_file.accompaniment_stem,
+                    "#{@audio_file.title}_accompaniment.wav")
     when 'original'
-      send_download(@audio_file.original_file, @audio_file.original_file.filename.to_s)
+      send_download(@audio_file.original_file,
+                    @audio_file.original_file.filename.to_s)
     else
       head :not_found
     end
@@ -92,7 +114,8 @@ class AudioFilesController < ApplicationController
   end
 
   def audio_file_params
-    params.require(:audio_file).permit(:title, :original_file, :duration, :file_size)
+    params.require(:audio_file).permit(:title, :original_file, :duration,
+                                       :file_size)
   end
 
   def send_stem(attachment)
@@ -101,7 +124,8 @@ class AudioFilesController < ApplicationController
       # - Enables browser caching
       # - Supports HTTP byte-range requests (instant seeking)
       # - Serves directly from storage (bypasses Rails)
-      redirect_to rails_blob_path(attachment, disposition: "inline"), allow_other_host: true
+      redirect_to rails_blob_path(attachment, disposition: 'inline'),
+                  allow_other_host: true
     else
       head :not_found
     end
