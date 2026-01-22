@@ -1,5 +1,5 @@
 class AudioFilesController < ApplicationController
-  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download, :retry]
+  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download, :retry, :mix]
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
@@ -109,6 +109,69 @@ class AudioFilesController < ApplicationController
       redirect_to @audio_file, notice: 'Processing restarted. Your file will be processed shortly.'
     else
       redirect_to @audio_file, alert: 'Only failed files can be retried.'
+    end
+  end
+
+  def mix
+    stem_types = params[:stems]&.split(',') || []
+
+    if stem_types.length < 2
+      head :bad_request
+      return
+    end
+
+    # Map stem types to attachments
+    stem_attachments = stem_types.map do |stem_type|
+      case stem_type
+      when 'vocals' then @audio_file.vocals_stem
+      when 'drums' then @audio_file.drums_stem
+      when 'bass' then @audio_file.bass_stem
+      when 'other' then @audio_file.other_stem
+      else nil
+      end
+    end.compact
+
+    # Verify all stems are attached
+    unless stem_attachments.all?(&:attached?)
+      head :not_found
+      return
+    end
+
+    # Create temp files for processing
+    Dir.mktmpdir do |tmpdir|
+      input_paths = stem_attachments.map.with_index do |attachment, i|
+        path = File.join(tmpdir, "stem_#{i}.wav")
+        File.binwrite(path, attachment.download)
+        path
+      end
+
+      output_path = File.join(tmpdir, "mixed.wav")
+
+      # Run the Python mixing script
+      python_path = Rails.root.join('.venv', 'bin', 'python3').to_s
+      python_path = 'python3' unless File.exist?(python_path)
+
+      script_path = Rails.root.join('lib', 'audio_processing', 'mix_stems.py').to_s
+      result = `#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} 2>&1`
+
+      begin
+        json_result = JSON.parse(result.lines.last)
+
+        if json_result['status'] == 'success' && File.exist?(output_path)
+          filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.wav"
+          # Use send_data instead of send_file to read file before temp dir is deleted
+          send_data File.binread(output_path),
+                    type: 'audio/wav',
+                    disposition: 'attachment',
+                    filename: filename
+        else
+          Rails.logger.error "Mix stems failed: #{json_result['error']}"
+          head :internal_server_error
+        end
+      rescue JSON::ParserError => e
+        Rails.logger.error "Mix stems JSON parse error: #{e.message}, output: #{result}"
+        head :internal_server_error
+      end
     end
   end
 
