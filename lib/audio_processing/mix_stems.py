@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
 """
 Audio stem mixing script.
-Mixes multiple WAV files together and outputs a single mixed WAV file.
+Mixes multiple audio files together and outputs a single mixed MP3 file.
 """
 
 import sys
 import os
 import json
 import argparse
+import tempfile
 
 try:
     import soundfile as sf
     import numpy as np
+    from pydub import AudioSegment
 except ImportError as e:
     print(json.dumps({
         "status": "error",
         "error": f"Missing dependency: {e}",
-        "message": "Please install required packages: pip install soundfile numpy"
+        "message": "Please install required packages: pip install soundfile numpy pydub"
     }))
     sys.exit(1)
 
 
-def mix_stems(input_paths, output_path, volumes=None):
+def mix_stems(input_paths, output_path, volumes=None, output_format='mp3', bitrate='192k'):
     """
     Mix multiple audio stems together with optional volume control.
 
     Args:
-        input_paths: List of paths to WAV files to mix
-        output_path: Path for the output mixed WAV file
+        input_paths: List of paths to audio files to mix (WAV or MP3)
+        output_path: Path for the output mixed file
         volumes: Optional list of volume multipliers (0.0 to 1.0) for each stem
+        output_format: Output format ('mp3' or 'wav'), defaults to 'mp3'
+        bitrate: MP3 bitrate (e.g., '192k'), only used if output_format is 'mp3'
 
     Returns:
         dict: Status and path to mixed file
@@ -46,7 +50,7 @@ def mix_stems(input_paths, output_path, volumes=None):
         elif len(volumes) != len(input_paths):
             volumes = volumes + [1.0] * (len(input_paths) - len(volumes))
 
-        # Load all audio files
+        # Load all audio files (supports both WAV and MP3)
         audio_data = []
         sample_rate = None
 
@@ -98,10 +102,28 @@ def mix_stems(input_paths, output_path, volumes=None):
             mixed = mixed / max_val * 0.95
 
         # Ensure output directory exists
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
-        # Write the mixed audio
-        sf.write(output_path, mixed, sample_rate)
+        # Write the mixed audio in the requested format
+        if output_format == 'mp3':
+            # Create temporary WAV file
+            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+            try:
+                # Write to temporary WAV
+                sf.write(temp_wav.name, mixed, sample_rate)
+                # Convert to MP3 using pydub
+                audio = AudioSegment.from_wav(temp_wav.name)
+                audio.export(output_path, format="mp3", bitrate=bitrate)
+            finally:
+                # Clean up temporary file
+                temp_wav.close()
+                if os.path.exists(temp_wav.name):
+                    os.unlink(temp_wav.name)
+        else:
+            # Write as WAV
+            sf.write(output_path, mixed, sample_rate)
 
         return {
             "status": "success",
@@ -121,10 +143,14 @@ def mix_stems(input_paths, output_path, volumes=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Mix multiple audio stems into one file')
-    parser.add_argument('output_file', help='Output WAV file path')
-    parser.add_argument('input_files', nargs='+', help='Input WAV files to mix')
+    parser.add_argument('output_file', help='Output audio file path')
+    parser.add_argument('input_files', nargs='+', help='Input audio files to mix (WAV or MP3)')
     parser.add_argument('--volumes', type=str, default=None,
                         help='Comma-separated volume levels (0.0-1.0) for each input file')
+    parser.add_argument('--format', type=str, default='mp3', choices=['mp3', 'wav'],
+                        help='Output format (default: mp3)')
+    parser.add_argument('--bitrate', type=str, default='192k',
+                        help='MP3 bitrate (default: 192k)')
 
     args = parser.parse_args()
 
@@ -140,7 +166,7 @@ def main():
             }))
             sys.exit(1)
 
-    result = mix_stems(args.input_files, args.output_file, volumes)
+    result = mix_stems(args.input_files, args.output_file, volumes, args.format, args.bitrate)
     print(json.dumps(result))
 
     if result["status"] == "error":
