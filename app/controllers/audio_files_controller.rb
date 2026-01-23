@@ -120,16 +120,32 @@ class AudioFilesController < ApplicationController
       return
     end
 
-    # Map stem types to attachments
-    stem_attachments = stem_types.map do |stem_type|
-      case stem_type
+    # Parse volumes parameter (format: "vocals:0.8,drums:1.0,bass:0.5")
+    volumes_param = params[:volumes]
+    volumes_map = {}
+    if volumes_param.present?
+      volumes_param.split(',').each do |vol_spec|
+        stem_name, vol_value = vol_spec.split(':')
+        volumes_map[stem_name] = vol_value.to_f if stem_name && vol_value
+      end
+    end
+
+    # Map stem types to attachments and get corresponding volumes
+    stem_attachments = []
+    volumes = []
+    stem_types.each do |stem_type|
+      attachment = case stem_type
       when 'vocals' then @audio_file.vocals_stem
       when 'drums' then @audio_file.drums_stem
       when 'bass' then @audio_file.bass_stem
       when 'other' then @audio_file.other_stem
       else nil
       end
-    end.compact
+      if attachment
+        stem_attachments << attachment
+        volumes << (volumes_map[stem_type] || 1.0)
+      end
+    end
 
     # Verify all stems are attached
     unless stem_attachments.all?(&:attached?)
@@ -152,7 +168,13 @@ class AudioFilesController < ApplicationController
       python_path = 'python3' unless File.exist?(python_path)
 
       script_path = Rails.root.join('lib', 'audio_processing', 'mix_stems.py').to_s
-      result = `#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} 2>&1`
+      volumes_arg = "--volumes #{volumes.join(',')}"
+      cmd = "#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} #{volumes_arg}"
+      Rails.logger.info "Mix command: #{cmd}"
+      Rails.logger.info "Volumes received: #{params[:volumes]}"
+      Rails.logger.info "Volumes parsed: #{volumes.inspect}"
+      result = `#{cmd} 2>&1`
+      Rails.logger.info "Mix result: #{result}"
 
       begin
         json_result = JSON.parse(result.lines.last)
