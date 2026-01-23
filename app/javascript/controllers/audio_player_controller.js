@@ -12,6 +12,26 @@ export default class extends Controller {
   // Expose globally for waveform_player_controller
   static {
     window.audioPlayerWavesurfers = this.wavesurfers
+
+    // Handle window resize and orientation change for waveform redraw
+    let resizeTimeout
+    const handleResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(() => {
+        window.audioPlayerWavesurfers.forEach((ws) => {
+          if (ws && typeof ws.setOptions === 'function') {
+            // Trigger a redraw by getting current width
+            const container = ws.getWrapper()?.parentElement
+            if (container) {
+              ws.setOptions({ height: 80 })
+            }
+          }
+        })
+      }, 150)
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
   }
 
   // Stem color mapping
@@ -72,13 +92,14 @@ export default class extends Controller {
     let waveformContainer = playerContainer.querySelector('.waveform-container')
     if (!waveformContainer) {
       waveformContainer = document.createElement('div')
-      waveformContainer.className = 'waveform-container mb-4'
+      waveformContainer.className = 'waveform-container mb-3 sm:mb-4'
 
       // Create waveform wrapper with proper styling
       const waveformWrapper = document.createElement('div')
       waveformWrapper.id = `waveform_${audioElement.id}`
       waveformWrapper.className = 'rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700/50'
-      waveformWrapper.style.height = '80px'
+      waveformWrapper.style.height = '60px'
+      waveformWrapper.style.minHeight = '60px'
       waveformContainer.appendChild(waveformWrapper)
 
       // Create time display
@@ -90,10 +111,10 @@ export default class extends Controller {
       `
       waveformContainer.appendChild(timeDisplay)
 
-      // Insert before track name area
-      const trackNameArea = playerContainer.querySelector('.flex.items-center.gap-3')
-      if (trackNameArea) {
-        trackNameArea.after(waveformContainer)
+      // Insert after header area
+      const headerArea = playerContainer.querySelector('.flex.items-center.justify-between')
+      if (headerArea) {
+        headerArea.after(waveformContainer)
       } else {
         playerContainer.appendChild(waveformContainer)
       }
@@ -120,22 +141,21 @@ export default class extends Controller {
       barWidth: 2,
       barGap: 1,
       barRadius: 2,
-      height: 80,
+      height: 60,
       normalize: true,
       backend: 'WebAudio',
-      mediaControls: false
+      mediaControls: false,
+      responsive: true
     })
 
     // Store instance
     this.constructor.wavesurfers.set(audioElement.id, wavesurfer)
 
-    // Load the audio
-    wavesurfer.load(url)
-
     // Update time display
     const currentTimeEl = document.getElementById(`current_time_${audioElement.id}`)
     const durationEl = document.getElementById(`duration_${audioElement.id}`)
 
+    // Set up event handlers BEFORE loading audio
     wavesurfer.on('ready', () => {
       console.log('WaveSurfer ready, starting playback')
       if (durationEl) {
@@ -172,6 +192,9 @@ export default class extends Controller {
     wavesurfer.on('error', (error) => {
       console.error('WaveSurfer error:', error)
     })
+
+    // Load the audio AFTER setting up event handlers
+    wavesurfer.load(url)
 
     // Add controls with Plyr as fallback (hidden)
     this.setupPlyrFallback(audioElement, url)
