@@ -87,17 +87,24 @@ class AudioFilesController < ApplicationController
   def download
     stem_type = params[:stem_type]
 
-    case stem_type
-    when 'vocals'
-      send_download(@audio_file.vocals_stem, "#{@audio_file.title}_vocals.wav")
-    when 'drums'
-      send_download(@audio_file.drums_stem, "#{@audio_file.title}_drums.wav")
-    when 'bass'
-      send_download(@audio_file.bass_stem, "#{@audio_file.title}_bass.wav")
-    when 'other'
-      send_download(@audio_file.other_stem, "#{@audio_file.title}_other.wav")
-    when 'original'
-      send_download(@audio_file.original_file, @audio_file.original_file.filename.to_s)
+    attachment = case stem_type
+    when 'vocals' then @audio_file.vocals_stem
+    when 'drums' then @audio_file.drums_stem
+    when 'bass' then @audio_file.bass_stem
+    when 'other' then @audio_file.other_stem
+    when 'original' then @audio_file.original_file
+    else nil
+    end
+
+    if attachment&.attached?
+      # Get the file extension from the actual attachment
+      extension = File.extname(attachment.filename.to_s)
+      filename = if stem_type == 'original'
+        attachment.filename.to_s
+      else
+        "#{@audio_file.title}_#{stem_type}#{extension}"
+      end
+      send_download(attachment, filename)
     else
       head :not_found
     end
@@ -156,12 +163,14 @@ class AudioFilesController < ApplicationController
     # Create temp files for processing
     Dir.mktmpdir do |tmpdir|
       input_paths = stem_attachments.map.with_index do |attachment, i|
-        path = File.join(tmpdir, "stem_#{i}.wav")
+        # Use the original file extension from the attachment
+        ext = File.extname(attachment.filename.to_s)
+        path = File.join(tmpdir, "stem_#{i}#{ext}")
         File.binwrite(path, attachment.download)
         path
       end
 
-      output_path = File.join(tmpdir, "mixed.wav")
+      output_path = File.join(tmpdir, "mixed.mp3")
 
       # Run the Python mixing script
       python_path = Rails.root.join('.venv', 'bin', 'python3').to_s
@@ -169,7 +178,8 @@ class AudioFilesController < ApplicationController
 
       script_path = Rails.root.join('lib', 'audio_processing', 'mix_stems.py').to_s
       volumes_arg = "--volumes #{volumes.join(',')}"
-      cmd = "#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} #{volumes_arg}"
+      format_arg = "--format mp3 --bitrate 192k"
+      cmd = "#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} #{volumes_arg} #{format_arg}"
       Rails.logger.info "Mix command: #{cmd}"
       Rails.logger.info "Volumes received: #{params[:volumes]}"
       Rails.logger.info "Volumes parsed: #{volumes.inspect}"
@@ -180,12 +190,12 @@ class AudioFilesController < ApplicationController
         json_result = JSON.parse(result.lines.last)
 
         if json_result['status'] == 'success' && File.exist?(output_path)
-          filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.wav"
+          filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.mp3"
           # Use inline disposition for streaming playback, attachment for download
           disposition = params[:format] == 'stream' ? 'inline' : 'attachment'
           # Use send_data instead of send_file to read file before temp dir is deleted
           send_data File.binread(output_path),
-                    type: 'audio/wav',
+                    type: 'audio/mpeg',
                     disposition: disposition,
                     filename: filename
         else

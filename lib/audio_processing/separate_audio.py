@@ -21,6 +21,7 @@ try:
     import soundfile as sf
     import numpy as np
     import librosa
+    from pydub import AudioSegment
 except ImportError as e:
     print(json.dumps({
         "status": "error",
@@ -133,10 +134,26 @@ def separate_audio(input_path, output_dir, job_id=None):
 
         update_progress(80, "Saving separated audio files...")
 
-        # Save stems as WAV files
+        # Helper function to save as MP3
+        def save_as_mp3(audio_data, file_path, sample_rate, bitrate="192k"):
+            # Create temporary WAV file
+            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+            try:
+                # Write to temporary WAV
+                sf.write(temp_wav.name, audio_data, sample_rate)
+                # Convert to MP3 using pydub
+                audio = AudioSegment.from_wav(temp_wav.name)
+                audio.export(file_path, format="mp3", bitrate=bitrate)
+            finally:
+                # Clean up temporary file
+                temp_wav.close()
+                if os.path.exists(temp_wav.name):
+                    os.unlink(temp_wav.name)
+
+        # Save stems as MP3 files (192kbps for good quality and smaller size)
         output_paths = {}
         for stem_name, stem_audio in stems.items():
-            output_path = os.path.join(output_dir, f"{stem_name}.wav")
+            output_path = os.path.join(output_dir, f"{stem_name}.mp3")
 
             # Move to CPU and convert to numpy
             stem_audio = stem_audio.cpu().numpy()
@@ -146,11 +163,11 @@ def separate_audio(input_path, output_dir, job_id=None):
             if max_val > 0:
                 stem_audio = stem_audio / max_val * 0.95
 
-            # Save as WAV (audio is in format [channels, samples])
             # Transpose to [samples, channels] for soundfile
             stem_audio = stem_audio.T
 
-            sf.write(output_path, stem_audio, model.samplerate)
+            # Save as MP3
+            save_as_mp3(stem_audio, output_path, model.samplerate)
             output_paths[stem_name] = output_path
 
         update_progress(100, "Audio separation completed successfully!")

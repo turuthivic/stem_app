@@ -16,11 +16,12 @@ try:
     import librosa
     import soundfile as sf
     import numpy as np
+    from pydub import AudioSegment
 except ImportError as e:
     print(json.dumps({
         "status": "error",
         "error": f"Missing dependency: {e}",
-        "message": "Please install required packages: pip install librosa soundfile numpy"
+        "message": "Please install required packages: pip install librosa soundfile numpy pydub"
     }))
     sys.exit(1)
 
@@ -107,21 +108,37 @@ def separate_audio(input_path, output_dir, job_id=None):
 
         update_progress(80, "Saving separated audio files...")
 
-        # Save stems as WAV files
+        # Save stems as MP3 files (192kbps for good quality and smaller size)
         output_paths = {}
 
         # Normalize audio to prevent clipping
         vocals = vocals / np.max(np.abs(vocals)) * 0.95 if np.max(np.abs(vocals)) > 0 else vocals
         accompaniment = accompaniment / np.max(np.abs(accompaniment)) * 0.95 if np.max(np.abs(accompaniment)) > 0 else accompaniment
 
-        # Save vocals
-        vocals_path = os.path.join(output_dir, "vocals.wav")
-        sf.write(vocals_path, vocals.T if vocals.shape[0] == 2 else vocals, sample_rate)
+        # Helper function to save as MP3
+        def save_as_mp3(audio_data, file_path, sample_rate, bitrate="192k"):
+            # Create temporary WAV file
+            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+            try:
+                # Write to temporary WAV
+                sf.write(temp_wav.name, audio_data.T if audio_data.shape[0] == 2 else audio_data, sample_rate)
+                # Convert to MP3 using pydub
+                audio = AudioSegment.from_wav(temp_wav.name)
+                audio.export(file_path, format="mp3", bitrate=bitrate)
+            finally:
+                # Clean up temporary file
+                temp_wav.close()
+                if os.path.exists(temp_wav.name):
+                    os.unlink(temp_wav.name)
+
+        # Save vocals as MP3
+        vocals_path = os.path.join(output_dir, "vocals.mp3")
+        save_as_mp3(vocals, vocals_path, sample_rate)
         output_paths['vocals'] = vocals_path
 
-        # Save accompaniment
-        accompaniment_path = os.path.join(output_dir, "accompaniment.wav")
-        sf.write(accompaniment_path, accompaniment.T if accompaniment.shape[0] == 2 else accompaniment, sample_rate)
+        # Save accompaniment as MP3
+        accompaniment_path = os.path.join(output_dir, "accompaniment.mp3")
+        save_as_mp3(accompaniment, accompaniment_path, sample_rate)
         output_paths['accompaniment'] = accompaniment_path
 
         update_progress(100, "Audio separation completed successfully!")
