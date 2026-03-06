@@ -2,22 +2,22 @@
 service: stem-app
 
 # Name of the container image.
-image: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>/stem-app
+image: turuthivic/stem-app
 
 # Deploy to these servers.
 servers:
   web:
-    - <%= ENV["VPS_IP"] %>
+    - 91.134.139.95
   job:
     hosts:
-      - <%= ENV["VPS_IP"] %>
+      - 91.134.139.95
     cmd: bin/jobs
 
 # Enable SSL auto certification via Let's Encrypt.
 # Kamal 2 uses kamal-proxy for this.
 proxy:
   ssl: true
-  host: <%= ENV["APP_DOMAIN"] %>
+  host: stem-app.turuthi.xyz
   app_port: 80
 
 # Credentials for your image host.
@@ -50,7 +50,7 @@ asset_path: /rails/public/assets
 accessories:
   db:
     image: postgres:16
-    host: <%= ENV["VPS_IP"] %>
+    host: 91.134.139.95
     port: "127.0.0.1:5432:5432"
     env:
       clear:
@@ -65,4 +65,4 @@ accessories:
 
 # SSH configuration
 ssh:
-  user: root
+  user: ubuntu
