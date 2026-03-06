@@ -54,11 +54,12 @@ RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
-# Install Python dependencies (CPU-only PyTorch to keep image small)
+# Install Python dependencies in a venv (CPU-only PyTorch to keep image small)
 COPY requirements.txt ./
-RUN pip3 install --no-cache-dir --break-system-packages \
+RUN python3 -m venv /rails/.venv && \
+    /rails/.venv/bin/pip install --no-cache-dir \
     torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
-    pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+    /rails/.venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -82,7 +83,7 @@ COPY --from=build /rails /rails
 # Run and own only the runtime files as a non-root user for security
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+    chown -R rails:rails db log storage tmp .venv
 USER 1000:1000
 
 # Entrypoint prepares the database.
