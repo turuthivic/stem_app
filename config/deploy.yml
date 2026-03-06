@@ -13,10 +13,9 @@ servers:
       - 91.134.139.95
     cmd: bin/jobs
 
-# Enable SSL auto certification via Let's Encrypt.
-# Kamal 2 uses kamal-proxy for this.
+# Caddy handles SSL termination, kamal-proxy listens on 3000.
 proxy:
-  ssl: true
+  ssl: false
   host: stem-app.turuthi.xyz
   app_port: 80
 
