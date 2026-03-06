@@ -75,9 +75,10 @@ Rails.application.configure do
   config.hosts << "brice-indurative-rosanne.ngrok-free.dev"
   # Allow any .ngrok-free.dev subdomain
   config.hosts << /.*\.ngrok-free\.dev/
+  config.hosts << /.*\.ts\.net/
 
   # Skip ngrok browser warning for mobile apps
   config.action_dispatch.default_headers.merge!(
-    'ngrok-skip-browser-warning' => 'true'
+    "ngrok-skip-browser-warning" => "true"
   )
 end
