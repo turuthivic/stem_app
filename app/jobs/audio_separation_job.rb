@@ -7,6 +7,13 @@ class AudioSeparationJob < ApplicationJob
   queue_as :default
 
   def perform(audio_file)
+    # Guard clause: Check if audio_file still exists
+    # This handles the case where the audio file was deleted while job was queued
+    unless audio_file && audio_file.persisted?
+      Rails.logger.info "AudioSeparationJob skipped: AudioFile no longer exists"
+      return
+    end
+
     # Create a separation job record to track progress
     separation_job = audio_file.separation_jobs.build(
       separation_type: :vocals_accompaniment,
@@ -17,6 +24,13 @@ class AudioSeparationJob < ApplicationJob
     begin
       # Mark job as started
       separation_job.mark_as_started!
+
+      # Check if job was cancelled (audio file deleted during processing)
+      separation_job.reload
+      if separation_job.cancelled?
+        Rails.logger.info "AudioSeparationJob cancelled for job #{separation_job.id}"
+        return
+      end
 
       # Perform the actual audio separation
       # Note: This method now handles stem attachment internally before cleanup
@@ -32,10 +46,24 @@ class AudioSeparationJob < ApplicationJob
         raise StandardError, "Audio separation failed"
       end
 
+    rescue ActiveRecord::RecordNotFound => e
+      # Audio file was deleted during processing - this is expected behavior
+      Rails.logger.info "AudioSeparationJob stopped: AudioFile was deleted during processing"
+      # Don't raise error - this is not a failure, just a cancellation
+      return
     rescue => e
-      Rails.logger.error "Audio separation failed for AudioFile #{audio_file.id}: #{e.message}"
-      audio_file.update!(status: :failed)
-      separation_job.mark_as_failed!(e.message)
+      # Only update records if they still exist
+      begin
+        audio_file.reload
+        separation_job.reload
+
+        Rails.logger.error "Audio separation failed for AudioFile #{audio_file.id}: #{e.message}"
+        audio_file.update!(status: :failed)
+        separation_job.mark_as_failed!(e.message)
+      rescue ActiveRecord::RecordNotFound
+        Rails.logger.info "Cannot mark job as failed - records were deleted"
+      end
+
       raise e
     end
   end
@@ -66,10 +94,11 @@ class AudioSeparationJob < ApplicationJob
       output_dir = File.join(temp_dir, "output")
       Dir.mkdir(output_dir)
 
-      # Run Python separation script
-      script_path = Rails.root.join("lib", "audio_processing", "simple_separate.py")
+      # Run Python separation script (using Demucs ML-based separation)
+      script_path = Rails.root.join("lib", "audio_processing", "separate_audio.py")
+      python_path = Rails.root.join(".venv", "bin", "python3").to_s
       command = [
-        "python3",
+        python_path,
         script_path.to_s,
         input_path,
         output_dir,
@@ -121,10 +150,16 @@ class AudioSeparationJob < ApplicationJob
 
         unless status.success?
           stderr_output = stderr.read
+          Rails.logger.error "Python script failed with exit code #{status.exitstatus}"
+          Rails.logger.error "STDERR: #{stderr_output}"
           result = {
             success: false,
             error: "Separation script failed with exit code #{status.exitstatus}. Error: #{stderr_output}"
           }
+        else
+          # Read any remaining stderr even on success (might have warnings)
+          stderr_output = stderr.read
+          Rails.logger.info "STDERR (warnings): #{stderr_output}" if stderr_output && !stderr_output.empty?
         end
 
         # If we didn't get a result from JSON parsing, it's an error
@@ -164,11 +199,27 @@ class AudioSeparationJob < ApplicationJob
             content_type: "audio/wav"
           )
         end
-      when "accompaniment"
+      when "drums"
         File.open(file_path, "rb") do |file|
-          audio_file.accompaniment_stem.attach(
+          audio_file.drums_stem.attach(
             io: file,
-            filename: "#{audio_file.title}_accompaniment.wav",
+            filename: "#{audio_file.title}_drums.wav",
+            content_type: "audio/wav"
+          )
+        end
+      when "bass"
+        File.open(file_path, "rb") do |file|
+          audio_file.bass_stem.attach(
+            io: file,
+            filename: "#{audio_file.title}_bass.wav",
+            content_type: "audio/wav"
+          )
+        end
+      when "other"
+        File.open(file_path, "rb") do |file|
+          audio_file.other_stem.attach(
+            io: file,
+            filename: "#{audio_file.title}_other.wav",
             content_type: "audio/wav"
           )
         end

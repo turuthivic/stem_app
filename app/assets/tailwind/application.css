@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Override dark mode to use class strategy */
+@variant dark (.dark &);
