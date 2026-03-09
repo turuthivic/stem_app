@@ -14,7 +14,7 @@ class Step1SetupTest < ActionDispatch::IntegrationTest
   end
 
   test "Sidekiq queue is accessible" do
-    require 'sidekiq/api'
+    require "sidekiq/api"
     queue = Sidekiq::Queue.new
     assert_equal 0, queue.size
   end

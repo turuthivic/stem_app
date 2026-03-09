@@ -110,12 +110,12 @@ class AudioFilesTest < ApplicationSystemTestCase
     visit audio_files_url
 
     # Check for responsive grid classes
-    assert_selector '.grid'
+    assert_selector ".grid"
     assert_selector '.md\\:col-span-2'
 
     # Check for mobile-friendly elements
-    assert_selector '.container'
-    assert_selector '.mx-auto'
+    assert_selector ".container"
+    assert_selector ".mx-auto"
   end
 
   test "accessibility features" do
@@ -125,8 +125,8 @@ class AudioFilesTest < ApplicationSystemTestCase
     assert_selector 'label[for="audio_file_title"]'
 
     # Check for semantic HTML
-    assert_selector 'main'
-    assert_selector 'header'
+    assert_selector "main"
+    assert_selector "header"
 
     # Check for descriptive text
     assert_text "Upload audio files to separate vocals from accompaniment using AI"

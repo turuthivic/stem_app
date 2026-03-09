@@ -26,9 +26,9 @@ namespace :solid_queue do
       args = job.arguments["arguments"]&.first
       resource_info = if args.is_a?(Hash) && args["_aj_globalid"]
                         args["_aj_globalid"]
-                      else
+      else
                         "Unknown resource"
-                      end
+      end
 
       puts "  - Job #{job.id} (#{job.class_name}): #{resource_info}"
       puts "    Scheduled: #{job.scheduled_at}"
