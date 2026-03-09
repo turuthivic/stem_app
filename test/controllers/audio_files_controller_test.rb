@@ -155,14 +155,14 @@ class AudioFilesControllerTest < ActionDispatch::IntegrationTest
   def fixture_file_upload(filename, content_type)
     # Create more realistic file content to pass validations
     content = case filename
-              when "test.mp3"
+    when "test.mp3"
                 # More substantial content to pass size validation
                 "fake mp3 content " * 1000  # Make it bigger
-              when "test.txt"
+    when "test.txt"
                 "plain text content"
-              else
+    else
                 "generic content " * 1000
-              end
+    end
 
     Rack::Test::UploadedFile.new(
       StringIO.new(content),

@@ -50,7 +50,7 @@ class AudioSeparationJob < ApplicationJob
       # Audio file was deleted during processing - this is expected behavior
       Rails.logger.info "AudioSeparationJob stopped: AudioFile was deleted during processing"
       # Don't raise error - this is not a failure, just a cancellation
-      return
+      nil
     rescue => e
       # Only update records if they still exist
       begin

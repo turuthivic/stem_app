@@ -1,5 +1,5 @@
 class AudioFilesController < ApplicationController
-  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download, :retry, :mix]
+  before_action :set_audio_file, only: [ :show, :edit, :update, :destroy, :stems, :download, :retry, :mix ]
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
@@ -28,7 +28,7 @@ class AudioFilesController < ApplicationController
 
     respond_to do |format|
       if @audio_file.save
-        format.html { redirect_to @audio_file, notice: 'Audio file uploaded successfully! Processing will begin shortly.' }
+        format.html { redirect_to @audio_file, notice: "Audio file uploaded successfully! Processing will begin shortly." }
         format.turbo_stream { redirect_to @audio_file }
       else
         format.html { render :new, status: :unprocessable_entity }
@@ -48,7 +48,7 @@ class AudioFilesController < ApplicationController
   def update
     respond_to do |format|
       if @audio_file.update(audio_file_params.except(:original_file))
-        format.html { redirect_to @audio_file, notice: 'Audio file was successfully updated.' }
+        format.html { redirect_to @audio_file, notice: "Audio file was successfully updated." }
         format.turbo_stream { render turbo_stream: turbo_stream.replace(@audio_file, partial: "audio_files/audio_file", locals: { audio_file: @audio_file }) }
       else
         format.html { render :edit, status: :unprocessable_entity }
@@ -60,7 +60,7 @@ class AudioFilesController < ApplicationController
   def destroy
     @audio_file.destroy
     respond_to do |format|
-      format.html { redirect_to audio_files_url, notice: 'Audio file was successfully deleted.' }
+      format.html { redirect_to audio_files_url, notice: "Audio file was successfully deleted." }
       format.turbo_stream { render turbo_stream: turbo_stream.remove(@audio_file) }
     end
   end
@@ -69,15 +69,15 @@ class AudioFilesController < ApplicationController
     stem_type = params[:stem_type]
 
     case stem_type
-    when 'vocals'
+    when "vocals"
       send_stem(@audio_file.vocals_stem)
-    when 'drums'
+    when "drums"
       send_stem(@audio_file.drums_stem)
-    when 'bass'
+    when "bass"
       send_stem(@audio_file.bass_stem)
-    when 'other'
+    when "other"
       send_stem(@audio_file.other_stem)
-    when 'original'
+    when "original"
       send_stem(@audio_file.original_file)
     else
       head :not_found
@@ -88,18 +88,18 @@ class AudioFilesController < ApplicationController
     stem_type = params[:stem_type]
 
     attachment = case stem_type
-    when 'vocals' then @audio_file.vocals_stem
-    when 'drums' then @audio_file.drums_stem
-    when 'bass' then @audio_file.bass_stem
-    when 'other' then @audio_file.other_stem
-    when 'original' then @audio_file.original_file
+    when "vocals" then @audio_file.vocals_stem
+    when "drums" then @audio_file.drums_stem
+    when "bass" then @audio_file.bass_stem
+    when "other" then @audio_file.other_stem
+    when "original" then @audio_file.original_file
     else nil
     end
 
     if attachment&.attached?
       # Get the file extension from the actual attachment
       extension = File.extname(attachment.filename.to_s)
-      filename = if stem_type == 'original'
+      filename = if stem_type == "original"
         attachment.filename.to_s
       else
         "#{@audio_file.title}_#{stem_type}#{extension}"
@@ -113,14 +113,14 @@ class AudioFilesController < ApplicationController
   def retry
     if @audio_file.failed?
       @audio_file.retry_processing!
-      redirect_to @audio_file, notice: 'Processing restarted. Your file will be processed shortly.'
+      redirect_to @audio_file, notice: "Processing restarted. Your file will be processed shortly."
     else
-      redirect_to @audio_file, alert: 'Only failed files can be retried.'
+      redirect_to @audio_file, alert: "Only failed files can be retried."
     end
   end
 
   def mix
-    stem_types = params[:stems]&.split(',') || []
+    stem_types = params[:stems]&.split(",") || []
 
     if stem_types.length < 2
       head :bad_request
@@ -131,8 +131,8 @@ class AudioFilesController < ApplicationController
     volumes_param = params[:volumes]
     volumes_map = {}
     if volumes_param.present?
-      volumes_param.split(',').each do |vol_spec|
-        stem_name, vol_value = vol_spec.split(':')
+      volumes_param.split(",").each do |vol_spec|
+        stem_name, vol_value = vol_spec.split(":")
         volumes_map[stem_name] = vol_value.to_f if stem_name && vol_value
       end
     end
@@ -142,10 +142,10 @@ class AudioFilesController < ApplicationController
     volumes = []
     stem_types.each do |stem_type|
       attachment = case stem_type
-      when 'vocals' then @audio_file.vocals_stem
-      when 'drums' then @audio_file.drums_stem
-      when 'bass' then @audio_file.bass_stem
-      when 'other' then @audio_file.other_stem
+      when "vocals" then @audio_file.vocals_stem
+      when "drums" then @audio_file.drums_stem
+      when "bass" then @audio_file.bass_stem
+      when "other" then @audio_file.other_stem
       else nil
       end
       if attachment
@@ -173,10 +173,10 @@ class AudioFilesController < ApplicationController
       output_path = File.join(tmpdir, "mixed.mp3")
 
       # Run the Python mixing script
-      python_path = Rails.root.join('.venv', 'bin', 'python3').to_s
-      python_path = 'python3' unless File.exist?(python_path)
+      python_path = Rails.root.join(".venv", "bin", "python3").to_s
+      python_path = "python3" unless File.exist?(python_path)
 
-      script_path = Rails.root.join('lib', 'audio_processing', 'mix_stems.py').to_s
+      script_path = Rails.root.join("lib", "audio_processing", "mix_stems.py").to_s
       volumes_arg = "--volumes #{volumes.join(',')}"
       format_arg = "--format mp3 --bitrate 192k"
       cmd = "#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} #{volumes_arg} #{format_arg}"
@@ -189,13 +189,13 @@ class AudioFilesController < ApplicationController
       begin
         json_result = JSON.parse(result.lines.last)
 
-        if json_result['status'] == 'success' && File.exist?(output_path)
+        if json_result["status"] == "success" && File.exist?(output_path)
           filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.mp3"
           # Use inline disposition for streaming playback, attachment for download
-          disposition = params[:format] == 'stream' ? 'inline' : 'attachment'
+          disposition = params[:format] == "stream" ? "inline" : "attachment"
           # Use send_data instead of send_file to read file before temp dir is deleted
           send_data File.binread(output_path),
-                    type: 'audio/mpeg',
+                    type: "audio/mpeg",
                     disposition: disposition,
                     filename: filename
         else
@@ -214,12 +214,12 @@ class AudioFilesController < ApplicationController
   def handle_duplicate(existing)
     respond_to do |format|
       case existing.status
-      when 'completed'
+      when "completed"
         # Redirect to existing completed file
         format.html { redirect_to existing, notice: "A file with this title already exists and has been processed." }
         format.turbo_stream { redirect_to existing }
 
-      when 'failed'
+      when "failed"
         # Show options: retry existing or upload new
         format.html do
           @existing_audio_file = existing
@@ -234,7 +234,7 @@ class AudioFilesController < ApplicationController
           )
         end
 
-      when 'processing', 'uploaded'
+      when "processing", "uploaded"
         # Redirect to existing file that's still processing
         format.html { redirect_to existing, notice: "A file with this title is already being processed." }
         format.turbo_stream { redirect_to existing }
@@ -266,7 +266,7 @@ class AudioFilesController < ApplicationController
     if attachment.attached?
       send_data attachment.download,
                 type: attachment.content_type,
-                disposition: 'attachment',
+                disposition: "attachment",
                 filename: filename
     else
       head :not_found

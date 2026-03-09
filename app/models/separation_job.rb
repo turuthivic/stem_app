@@ -33,8 +33,8 @@ class SeparationJob < ApplicationRecord
 
   # Scopes
   scope :recent, -> { order(created_at: :desc) }
-  scope :active, -> { where(status: [:pending, :running]) }
-  scope :finished, -> { where(status: [:completed, :failed, :cancelled]) }
+  scope :active, -> { where(status: [ :pending, :running ]) }
+  scope :finished, -> { where(status: [ :completed, :failed, :cancelled ]) }
 
   # Instance methods
   def duration

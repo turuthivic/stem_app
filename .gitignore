@@ -44,3 +44,4 @@ dump.rdb
 /.kamal/secrets
 /.kamal/secrets-*
 __pycache__/
+.kamal/secrets
