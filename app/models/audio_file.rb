@@ -95,7 +95,7 @@ class AudioFile < ApplicationRecord
       # For testing/demo purposes, estimate based on file size
       # 1MB ≈ 1 minute (very rough estimate for compressed audio)
       estimated_duration = (original_file.byte_size / 1_000_000.0) * 60.0
-      self.duration = [estimated_duration, 30.0].max # Minimum 30 seconds
+      self.duration = [ estimated_duration, 30.0 ].max # Minimum 30 seconds
     end
   end
 
