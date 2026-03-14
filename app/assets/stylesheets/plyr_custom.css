@@ -8,6 +8,15 @@
   --plyr-audio-control-color-hover: #1f2937; /* Gray-800 */
 }
 
+/* Dark mode Plyr variables */
+.dark {
+  --plyr-color-main: #60a5fa; /* Blue-400 */
+  --plyr-video-background: #1f2937;
+  --plyr-audio-controls-background: #374151; /* Gray-700 */
+  --plyr-audio-control-color: #e5e7eb; /* Gray-200 */
+  --plyr-audio-control-color-hover: #ffffff;
+}
+
 /* Player container styling */
 .plyr {
   border-radius: 0.5rem;
@@ -29,6 +38,11 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   padding: 1rem;
+}
+
+.dark .plyr--audio .plyr__controls {
+  background: linear-gradient(to bottom, #374151, #1f2937);
+  border: 1px solid #4b5563;
 }
 
 /* Progress bar */
@@ -103,4 +117,67 @@
 .plyr__control:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+}
+
+/* Custom Range Slider Styles for Stem Mixer */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+  margin-top: -5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+input[type="range"]:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
