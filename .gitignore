@@ -40,7 +40,6 @@
 dump.rdb
 .claude/settings.local.json
 
-# Ignore Kamal secrets
-/.kamal/secrets
+# Ignore Kamal secrets (keep .kamal/secrets tracked since it only references env vars)
 /.kamal/secrets-*
 __pycache__/
