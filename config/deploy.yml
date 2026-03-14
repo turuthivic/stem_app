@@ -2,78 +2,55 @@
 service: stem-app
 
 # Name of the container image.
-image: <%= ENV["DOCKER_REGISTRY"] %>/stem-app
+image: turuthivic/stem-app
 
 # Deploy to these servers.
 servers:
   web:
+    - 91.134.139.95
+  job:
     hosts:
-      - <%= ENV["VPS_IP"] %>
-    labels:
-      traefik.http.routers.stem-app.rule: Host(`<%= ENV["DOMAIN"] %>`)
-      traefik.http.routers.stem-app.entrypoints: websecure
-      traefik.http.routers.stem-app.tls.certresolver: letsencrypt
-    options:
-      network: "private"
+      - 91.134.139.95
+    cmd: bin/jobs
+
+# Caddy handles SSL termination, kamal-proxy listens on 3000.
+proxy:
+  ssl: false
+  host: stem-app.turuthi.xyz
+  app_port: 80
 
 # Credentials for your image host.
 registry:
-  # Specify the registry server, if you're not using Docker Hub
-  # server: ghcr.io / registry.digitalocean.com / ...
-  server: <%= ENV["DOCKER_REGISTRY_SERVER"] || "ghcr.io" %>
-  username: <%= ENV["DOCKER_REGISTRY_USERNAME"] %>
+  server: ghcr.io
+  username:
+    - DOCKER_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
-  # Always use an access token rather than real password when possible.
-  password: <%= ENV["DOCKER_REGISTRY_PASSWORD"] %>
+# Configure builder setup.
+builder:
+  arch: amd64
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
-  clear:
-    RAILS_LOG_LEVEL: info
-    RAILS_MAX_THREADS: 5
-    PORT: 3000
-    SOLID_QUEUE_IN_PUMA: true
-    # Database connection - points to the PostgreSQL accessory
-    DATABASE_HOST: stem-app-db
-    POSTGRES_USER: stem_app
   secret:
     - RAILS_MASTER_KEY
     - STEM_APP_DATABASE_PASSWORD
+    - DB_HOST
 
-# Use a persistent storage volume for uploaded files
+# Use a persistent storage volume for Active Storage and SQLite-backed services.
 volumes:
-  - "stem-app-storage:/rails/storage"
+  - "stem_app_storage:/rails/storage"
 
-# Configure builder for multi-arch images
-builder:
-  arch: amd64
-  # Use remote builder for faster builds (optional)
-  # remote: ssh://deploy@<%= ENV["VPS_IP"] %>
-
-# Bridge fingerprinted assets (Propshaft)
+# Bridge fingerprinted assets between versions to avoid 404 on in-flight requests.
 asset_path: /rails/public/assets
 
-# Configure health checks for zero-downtime deployments
-healthcheck:
-  path: /up
-  port: 3000
-  max_attempts: 7
-  interval: 10s
-
-# Use a different SSH user than root
-ssh:
-  user: deploy
-
-# Configure custom SSH port if needed
-# ssh:
-#   port: 2222
-
-# Use accessory services (db)
+# Use accessory services (secrets come from .kamal/secrets).
 accessories:
   db:
     image: postgres:16
-    host: <%= ENV["VPS_IP"] %>
-    port: 5432
+    host: 91.134.139.95
+    port: "127.0.0.1:5432:5432"
     env:
       clear:
         POSTGRES_USER: stem_app
@@ -81,42 +58,10 @@ accessories:
       secret:
         - POSTGRES_PASSWORD
     files:
-      - .kamal/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - config/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     directories:
       - data:/var/lib/postgresql/data
-    # Optimize PostgreSQL for better performance
-    cmd: >
-      postgres
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-    options:
-      network: "private"
 
-# Configure a Traefik reverse proxy for SSL
-traefik:
-  options:
-    publish:
-      - "443:443"
-      - "80:80"
-    volume:
-      - "/letsencrypt:/letsencrypt"
-    network: "private"
-  args:
-    entryPoints.web.address: ":80"
-    entryPoints.websecure.address: ":443"
-    entryPoints.web.http.redirections.entryPoint.to: websecure
-    entryPoints.web.http.redirections.entryPoint.scheme: https
-    entryPoints.web.http.redirections.entrypoint.permanent: true
-    certificatesResolvers.letsencrypt.acme.email: <%= ENV["LETSENCRYPT_EMAIL"] %>
-    certificatesResolvers.letsencrypt.acme.storage: "/letsencrypt/acme.json"
-    certificatesResolvers.letsencrypt.acme.httpchallenge: true
-    certificatesResolvers.letsencrypt.acme.httpchallenge.entrypoint: web
-
-# Boot all accessories before deploying the app
-before_deploy:
-  - path: /bin/rails db:prepare
+# SSH configuration
+ssh:
+  user: ubuntu

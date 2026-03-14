@@ -2,7 +2,9 @@ class AudioFile < ApplicationRecord
   # Active Storage attachments
   has_one_attached :original_file
   has_one_attached :vocals_stem
-  has_one_attached :accompaniment_stem
+  has_one_attached :drums_stem
+  has_one_attached :bass_stem
+  has_one_attached :other_stem
 
   # Associations
   has_many :separation_jobs, dependent: :destroy
@@ -26,12 +28,29 @@ class AudioFile < ApplicationRecord
 
   # Callbacks
   before_validation :extract_metadata, if: -> { original_file.attached? }
+  before_destroy :cancel_running_jobs
   after_create :enqueue_separation_job, unless: -> { Rails.env.test? }
   after_update :broadcast_status_update, if: -> { saved_change_to_status? && !Rails.env.test? }
 
   # Scopes
   scope :recent, -> { order(created_at: :desc) }
   scope :by_status, ->(status) { where(status: status) }
+
+  # Class methods
+  def self.find_duplicate(title)
+    where(title: title).order(created_at: :desc).first
+  end
+
+  # Instance methods
+  def retry_processing!
+    return unless failed?
+
+    # Update status back to uploaded
+    update!(status: :uploaded, error_message: nil)
+
+    # Enqueue a new separation job
+    AudioSeparationJob.perform_later(self)
+  end
 
   private
 
@@ -76,7 +95,7 @@ class AudioFile < ApplicationRecord
       # For testing/demo purposes, estimate based on file size
       # 1MB ≈ 1 minute (very rough estimate for compressed audio)
       estimated_duration = (original_file.byte_size / 1_000_000.0) * 60.0
-      self.duration = [estimated_duration, 30.0].max # Minimum 30 seconds
+      self.duration = [ estimated_duration, 30.0 ].max # Minimum 30 seconds
     end
   end
 
@@ -92,5 +111,14 @@ class AudioFile < ApplicationRecord
       partial: "audio_files/audio_file",
       locals: { audio_file: self }
     )
+  end
+
+  def cancel_running_jobs
+    # Mark any active separation jobs as cancelled before destroying the record
+    # This prevents background jobs from crashing when they try to access deleted records
+    separation_jobs.active.each do |job|
+      job.update(status: :cancelled, completed_at: Time.current)
+      Rails.logger.info "Cancelled separation job #{job.id} for AudioFile #{id}"
+    end
   end
 end

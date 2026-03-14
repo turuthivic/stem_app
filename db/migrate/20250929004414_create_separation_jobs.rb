@@ -14,6 +14,6 @@ class CreateSeparationJobs < ActiveRecord::Migration[8.0]
 
     add_index :separation_jobs, :status
     add_index :separation_jobs, :separation_type
-    add_index :separation_jobs, [:audio_file_id, :status]
+    add_index :separation_jobs, [ :audio_file_id, :status ]
   end
 end
