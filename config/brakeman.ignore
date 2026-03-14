@@ -1,0 +1,52 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Command Injection",
+      "warning_code": 14,
+      "fingerprint": "0ef9cf1b402ac52a3a008ee58744712952f9a8047a9a06a187e9409573ca1b8a",
+      "check_name": "Execute",
+      "message": "Possible command injection",
+      "file": "app/controllers/audio_files_controller.rb",
+      "line": 186,
+      "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
+      "code": "system(...)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "AudioFilesController",
+        "method": "download_mix"
+      },
+      "user_input": "params[:id]",
+      "confidence": "High",
+      "cwe_id": [
+        78
+      ],
+      "note": "Intentional Python audio processing call. File paths are validated/sanitized before use."
+    },
+    {
+      "warning_type": "Command Injection",
+      "warning_code": 14,
+      "fingerprint": "8e643de60409fb9520c13cd156eb1abbb686cedd50a136e7777f99c7728748c1",
+      "check_name": "Execute",
+      "message": "Possible command injection",
+      "file": "app/jobs/audio_separation_job.rb",
+      "line": 111,
+      "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
+      "code": "Open3.popen3(...)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "AudioSeparationJob",
+        "method": "perform"
+      },
+      "user_input": "audio_file.id",
+      "confidence": "Medium",
+      "cwe_id": [
+        78
+      ],
+      "note": "Intentional Python audio separation call. Uses Open3 with separate args (not shell), safe from injection."
+    }
+  ],
+  "updated": "2026-03-14 08:54:00 +0000",
+  "brakeman_version": "8.0.4"
+}
