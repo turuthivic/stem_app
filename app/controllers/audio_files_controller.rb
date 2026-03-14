@@ -1,5 +1,5 @@
 class AudioFilesController < ApplicationController
-  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download]
+  before_action :set_audio_file, only: [:show, :edit, :update, :destroy, :stems, :download, :retry, :mix]
 
   def index
     @audio_files = AudioFile.recent.includes(:separation_jobs)
@@ -15,6 +15,16 @@ class AudioFilesController < ApplicationController
 
   def create
     @audio_file = AudioFile.new(audio_file_params)
+
+    # Check for duplicates before saving
+    if @audio_file.title.present?
+      existing = AudioFile.find_duplicate(@audio_file.title)
+
+      if existing
+        handle_duplicate(existing)
+        return
+      end
+    end
 
     respond_to do |format|
       if @audio_file.save
@@ -61,8 +71,12 @@ class AudioFilesController < ApplicationController
     case stem_type
     when 'vocals'
       send_stem(@audio_file.vocals_stem)
-    when 'accompaniment'
-      send_stem(@audio_file.accompaniment_stem)
+    when 'drums'
+      send_stem(@audio_file.drums_stem)
+    when 'bass'
+      send_stem(@audio_file.bass_stem)
+    when 'other'
+      send_stem(@audio_file.other_stem)
     when 'original'
       send_stem(@audio_file.original_file)
     else
@@ -73,19 +87,160 @@ class AudioFilesController < ApplicationController
   def download
     stem_type = params[:stem_type]
 
-    case stem_type
-    when 'vocals'
-      send_download(@audio_file.vocals_stem, "#{@audio_file.title}_vocals.wav")
-    when 'accompaniment'
-      send_download(@audio_file.accompaniment_stem, "#{@audio_file.title}_accompaniment.wav")
-    when 'original'
-      send_download(@audio_file.original_file, @audio_file.original_file.filename.to_s)
+    attachment = case stem_type
+    when 'vocals' then @audio_file.vocals_stem
+    when 'drums' then @audio_file.drums_stem
+    when 'bass' then @audio_file.bass_stem
+    when 'other' then @audio_file.other_stem
+    when 'original' then @audio_file.original_file
+    else nil
+    end
+
+    if attachment&.attached?
+      # Get the file extension from the actual attachment
+      extension = File.extname(attachment.filename.to_s)
+      filename = if stem_type == 'original'
+        attachment.filename.to_s
+      else
+        "#{@audio_file.title}_#{stem_type}#{extension}"
+      end
+      send_download(attachment, filename)
     else
       head :not_found
     end
   end
 
+  def retry
+    if @audio_file.failed?
+      @audio_file.retry_processing!
+      redirect_to @audio_file, notice: 'Processing restarted. Your file will be processed shortly.'
+    else
+      redirect_to @audio_file, alert: 'Only failed files can be retried.'
+    end
+  end
+
+  def mix
+    stem_types = params[:stems]&.split(',') || []
+
+    if stem_types.length < 2
+      head :bad_request
+      return
+    end
+
+    # Parse volumes parameter (format: "vocals:0.8,drums:1.0,bass:0.5")
+    volumes_param = params[:volumes]
+    volumes_map = {}
+    if volumes_param.present?
+      volumes_param.split(',').each do |vol_spec|
+        stem_name, vol_value = vol_spec.split(':')
+        volumes_map[stem_name] = vol_value.to_f if stem_name && vol_value
+      end
+    end
+
+    # Map stem types to attachments and get corresponding volumes
+    stem_attachments = []
+    volumes = []
+    stem_types.each do |stem_type|
+      attachment = case stem_type
+      when 'vocals' then @audio_file.vocals_stem
+      when 'drums' then @audio_file.drums_stem
+      when 'bass' then @audio_file.bass_stem
+      when 'other' then @audio_file.other_stem
+      else nil
+      end
+      if attachment
+        stem_attachments << attachment
+        volumes << (volumes_map[stem_type] || 1.0)
+      end
+    end
+
+    # Verify all stems are attached
+    unless stem_attachments.all?(&:attached?)
+      head :not_found
+      return
+    end
+
+    # Create temp files for processing
+    Dir.mktmpdir do |tmpdir|
+      input_paths = stem_attachments.map.with_index do |attachment, i|
+        # Use the original file extension from the attachment
+        ext = File.extname(attachment.filename.to_s)
+        path = File.join(tmpdir, "stem_#{i}#{ext}")
+        File.binwrite(path, attachment.download)
+        path
+      end
+
+      output_path = File.join(tmpdir, "mixed.mp3")
+
+      # Run the Python mixing script
+      python_path = Rails.root.join('.venv', 'bin', 'python3').to_s
+      python_path = 'python3' unless File.exist?(python_path)
+
+      script_path = Rails.root.join('lib', 'audio_processing', 'mix_stems.py').to_s
+      volumes_arg = "--volumes #{volumes.join(',')}"
+      format_arg = "--format mp3 --bitrate 192k"
+      cmd = "#{python_path} #{script_path} #{output_path} #{input_paths.join(' ')} #{volumes_arg} #{format_arg}"
+      Rails.logger.info "Mix command: #{cmd}"
+      Rails.logger.info "Volumes received: #{params[:volumes]}"
+      Rails.logger.info "Volumes parsed: #{volumes.inspect}"
+      result = `#{cmd} 2>&1`
+      Rails.logger.info "Mix result: #{result}"
+
+      begin
+        json_result = JSON.parse(result.lines.last)
+
+        if json_result['status'] == 'success' && File.exist?(output_path)
+          filename = "#{@audio_file.title}_mix_#{stem_types.join('_')}.mp3"
+          # Use inline disposition for streaming playback, attachment for download
+          disposition = params[:format] == 'stream' ? 'inline' : 'attachment'
+          # Use send_data instead of send_file to read file before temp dir is deleted
+          send_data File.binread(output_path),
+                    type: 'audio/mpeg',
+                    disposition: disposition,
+                    filename: filename
+        else
+          Rails.logger.error "Mix stems failed: #{json_result['error']}"
+          head :internal_server_error
+        end
+      rescue JSON::ParserError => e
+        Rails.logger.error "Mix stems JSON parse error: #{e.message}, output: #{result}"
+        head :internal_server_error
+      end
+    end
+  end
+
   private
+
+  def handle_duplicate(existing)
+    respond_to do |format|
+      case existing.status
+      when 'completed'
+        # Redirect to existing completed file
+        format.html { redirect_to existing, notice: "A file with this title already exists and has been processed." }
+        format.turbo_stream { redirect_to existing }
+
+      when 'failed'
+        # Show options: retry existing or upload new
+        format.html do
+          @existing_audio_file = existing
+          @new_audio_file = @audio_file
+          render :duplicate_failed, status: :unprocessable_entity
+        end
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "upload_form",
+            partial: "audio_files/duplicate_warning",
+            locals: { existing: existing, new_audio_file: @audio_file }
+          )
+        end
+
+      when 'processing', 'uploaded'
+        # Redirect to existing file that's still processing
+        format.html { redirect_to existing, notice: "A file with this title is already being processed." }
+        format.turbo_stream { redirect_to existing }
+      end
+    end
+  end
 
   def set_audio_file
     @audio_file = AudioFile.find(params[:id])

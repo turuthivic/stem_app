@@ -302,8 +302,10 @@ GEM
     tailwindcss-ruby (4.1.13-arm64-darwin)
     tailwindcss-ruby (4.1.13-x86_64-linux-gnu)
     thor (1.4.0)
-    thruster (0.1.15-arm64-darwin)
-    thruster (0.1.15-x86_64-linux)
+
+    thruster (0.1.16-arm64-darwin)
+    thruster (0.1.16-x86_64-linux)
+
     timeout (0.4.3)
     tsort (0.2.0)
     turbo-rails (2.0.17)
@@ -329,6 +331,8 @@ GEM
 
 PLATFORMS
   arm64-darwin-24
+
+  arm64-darwin-25
   x86_64-linux
 
 DEPENDENCIES
