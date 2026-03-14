@@ -2,6 +2,12 @@ source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.1"
+
+# Security fixes - explicit minimum versions
+# CVE-2025-XXXX: Rack Directory Traversal & XSS
+# CVE-2025-XXXX: Nokogiri missing return value check
+gem "rack", ">= 3.2.5"
+gem "nokogiri", ">= 1.19.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use postgresql as the database for Active Record
