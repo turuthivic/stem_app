@@ -1,0 +1,18 @@
+{
+  "ignore": [
+    {
+      "warning_type": "Command Injection",
+      "message": "Running Python audio processing script",
+      "file": "app/controllers/audio_files_controller.rb",
+      "line": 147,
+      "note": "Intentionally calling Python script for audio mixing - input paths are local temp files"
+    },
+    {
+      "warning_type": "Command Injection",
+      "message": "Running Python audio separation script",
+      "file": "app/jobs/audio_separation_job.rb",
+      "line": 99,
+      "note": "Intentionally calling Python script for audio separation - input is local temp file"
+    }
+  ]
+}
