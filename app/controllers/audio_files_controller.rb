@@ -2,7 +2,8 @@ class AudioFilesController < ApplicationController
   before_action :set_audio_file, only: [ :show, :edit, :update, :destroy, :stems, :download, :retry, :mix ]
 
   def index
-    @audio_files = AudioFile.recent.includes(:separation_jobs)
+    @recent_files = AudioFile.recent.limit(5)
+    @total_count = AudioFile.count
   end
 
   def show
